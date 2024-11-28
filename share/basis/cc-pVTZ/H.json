@@ -1,0 +1,85 @@
+{
+    "electron_shells": [
+        {
+            "function_type": "gto",
+            "region": "",
+            "angular_momentum": [
+                0
+            ],
+            "exponents": [
+                "33.8700000",
+                "5.0950000",
+                "1.1590000",
+                "0.3258000",
+                "0.1027000"
+            ],
+            "coefficients": [
+                [
+                    "0.0060680",
+                    "0.0453080",
+                    "0.2028220",
+                    "0.5039030",
+                    "0.3834210"
+                ],
+                [
+                    "0.0000000",
+                    "0.0000000",
+                    "0.0000000",
+                    "1.0000000",
+                    "0.0000000"
+                ],
+                [
+                    "0.0000000",
+                    "0.0000000",
+                    "0.0000000",
+                    "0.0000000",
+                    "1.0000000"
+                ]
+            ]
+        },
+        {
+            "function_type": "gto",
+            "region": "",
+            "angular_momentum": [
+                1
+            ],
+            "exponents": [
+                "1.4070000",
+                "0.3880000"
+            ],
+            "coefficients": [
+                [
+                    "1.0000000",
+                    "0.0000000"
+                ],
+                [
+                    "0.0000000",
+                    "1.0000000"
+                ]
+            ]
+        },
+        {
+            "function_type": "gto_spherical",
+            "region": "",
+            "angular_momentum": [
+                2
+            ],
+            "exponents": [
+                "1.0570000"
+            ],
+            "coefficients": [
+                [
+                    "1.0000000"
+                ]
+            ]
+        }
+    ],
+    "references": [
+        {
+            "reference_description": "cc-pVTZ",
+            "reference_keys": [
+                "dunning1989a"
+            ]
+        }
+    ]
+}

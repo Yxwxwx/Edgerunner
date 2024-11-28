@@ -1,0 +1,54 @@
+{
+    "electron_shells": [
+        {
+            "function_type": "gto",
+            "region": "valence",
+            "angular_momentum": [
+                0
+            ],
+            "exponents": [
+                "13.0100000",
+                "1.9620000",
+                "0.4446000",
+                "0.1220000"
+            ],
+            "coefficients": [
+                [
+                    "0.0196850",
+                    "0.1379770",
+                    "0.4781480",
+                    "0.5012400"
+                ],
+                [
+                    "0.0000000",
+                    "0.0000000",
+                    "0.0000000",
+                    "1.0000000"
+                ]
+            ]
+        },
+        {
+            "function_type": "gto",
+            "region": "valence",
+            "angular_momentum": [
+                1
+            ],
+            "exponents": [
+                "0.7270000"
+            ],
+            "coefficients": [
+                [
+                    "1.0000000"
+                ]
+            ]
+        }
+    ],
+    "references": [
+        {
+            "reference_description": "cc-pVDZ",
+            "reference_keys": [
+                "dunning1989a"
+            ]
+        }
+    ]
+}
