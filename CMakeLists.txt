@@ -51,9 +51,9 @@ set(CINTLIB "${cint_BINARY_DIR}/libcint.so")  # 如果你使用的是 .so 动态
 find_package(OpenMP REQUIRED)
 find_package(Threads REQUIRED)
 
-file(GLOB_RECURSE src_gto "src/gto/*.cpp")
-file(GLOB_RECURSE src_int "src/integral/*.cpp")
-file(GLOB_RECURSE src_main "src/hf/*.cpp")
+file(GLOB_RECURSE src_gto "src/gto/*.[ch]pp")
+file(GLOB_RECURSE src_int "src/integral/*.[ch]pp")
+file(GLOB_RECURSE src_main "src/hf/*.[ch]pp")
 
 add_definitions(-DSHARE_DIR="${CMAKE_SOURCE_DIR}/share")
 
@@ -61,3 +61,9 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
 add_executable(Edgerunners ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp ${src_gto} ${src_int})
 
 target_link_libraries(Edgerunners ${CINTLIB} OpenMP::OpenMP_CXX Threads::Threads  nlohmann_json::nlohmann_json)
+
+add_custom_command(TARGET Edgerunners POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_directory
+      ${CMAKE_SOURCE_DIR}/share
+      ${CMAKE_BINARY_DIR}/share
+)
