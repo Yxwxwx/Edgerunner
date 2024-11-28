@@ -1,4 +1,12 @@
 #include "gto.hpp"
+#include "Eigen/Core"
+#include <algorithm>
+#include <cstdio>
+#include <fstream>
+#include <regex>
+#include <stdexcept>
+#include <string>
+#include <vector>
 extern "C" {
 #include <cint.h>
 }
@@ -48,228 +56,223 @@ void Mol::parseXYZ(const std::string &xyz) {
     }
     int Z = it->second;
 
-    atoms.push_back({Z, x, y, z});
+    atoms.push_back({atomSymbol, Z, x, y, z});
   }
 }
 
 void Mol::parseBasis(const std::string &basis) {
-  std::string processed_basis = basis;
-  BasisType type = BasisType::UNKNOWN;
+  _basis_name = basis;
 
-  std::string basis_lower = basis;
-  std::transform(basis_lower.begin(), basis_lower.end(), basis_lower.begin(),
-                 ::tolower);
+  // 转为小写
+  std::transform(_basis_name.begin(), _basis_name.end(), _basis_name.begin(),
+                 [](unsigned char c) { return std::tolower(c); });
 
-  if (std::isdigit(basis_lower[0]) || basis_lower.substr(0, 3) == "sto") {
-    type = BasisType::POPLE;
-    processed_basis = basis_lower;
-    std::replace(processed_basis.begin(), processed_basis.end(), '*', '_');
-    std::transform(processed_basis.begin(), processed_basis.end(),
-                   processed_basis.begin(), ::toupper);
-  }
-
-  else if (basis_lower.substr(0, 4) == "def2") {
-    type = BasisType::DEF2;
-    processed_basis = "def2-";
-    size_t pos = basis_lower.find("def2-");
-    if (pos != std::string::npos && pos + 5 < basis_lower.length()) {
-      std::string suffix = basis_lower.substr(pos + 5);
-      std::transform(suffix.begin(), suffix.end(), suffix.begin(), ::toupper);
-      processed_basis += suffix;
-    }
-  }
-
-  else if (basis_lower.substr(0, 2) == "cc" ||
-           basis_lower.substr(0, 6) == "aug-cc") {
-    type = BasisType::CC;
-
-    bool is_aug = basis_lower.substr(0, 6) == "aug-cc";
-
-    processed_basis = is_aug ? "aug-cc-p" : "cc-p";
-
-    // 获取需要大写的后缀部分
-    size_t suffix_start = is_aug ? 7 : 3;
-    if (basis_lower.length() > suffix_start) {
-      std::string suffix = basis_lower.substr(suffix_start);
-      std::transform(suffix.begin(), suffix.end(), suffix.begin(), ::toupper);
-      processed_basis += suffix;
-    }
-  } else {
-    throw std::invalid_argument(
-        std::format("Unsupported basis set: {}. Must start with a number, "
-                    "'sto', 'def2', or 'cc'/'aug-cc'",
-                    basis));
-  }
-
-  _basis_type = type;
-  _basis_name = processed_basis;
+  // 先处理连续的两个 '*'
+  _basis_name = std::regex_replace(_basis_name, std::regex("\\*\\*"), "_d_p_");
+  // 再处理单个 '*'
+  _basis_name = std::regex_replace(_basis_name, std::regex("\\*"), "_d_");
 }
 
 void Mol::setupCintInfo() {
-  std::filesystem::path basis_dir = "share/basis";
-  basis_dir /= _basis_name;
+  // 初始化 atm 和 env 的大小
+  info.natm = static_cast<int>(atoms.size());
+  info.atm.resize(ATM_SLOTS * info.natm); // atm 是二维数组，展平为一维
 
   info.env.resize(20, 0.0);
 
-  info.natm = atoms.size();
-  for (const auto &atom : atoms) {
-    auto coord_pos = info.env.size();
-    info.env.emplace_back(atom.x * angstrom_to_bohr);
-    info.env.emplace_back(atom.y * angstrom_to_bohr);
-    info.env.emplace_back(atom.z * angstrom_to_bohr);
-    info.env.emplace_back(0.0);
+  int env_index = PTR_ENV_START;
+  for (int i = 0; i < info.natm; ++i) {
+    const auto &atom = atoms[i];
 
-    info.atm.emplace_back(atom.Z);
-    info.atm.emplace_back(coord_pos);
-    info.atm.emplace_back(1);
-    info.atm.emplace_back(coord_pos + 3);
-    info.atm.emplace_back(0);
-    info.atm.emplace_back(0);
+    info.atm[i * ATM_SLOTS + 0] = atom.Z;
+
+    info.atm[i * ATM_SLOTS + 1] = env_index;
+    info.env.push_back(atom.x * angstrom_to_bohr);
+    info.env.push_back(atom.y * angstrom_to_bohr);
+    info.env.push_back(atom.z * angstrom_to_bohr);
+    info.env.push_back(0.0);
+    env_index += 4;
+
+    info.atm[i * ATM_SLOTS + 2] = 1;
+
+    info.atm[i * ATM_SLOTS + 3] = env_index - 1;
+
+    info.atm[i * ATM_SLOTS + 4] = 0;
+    info.atm[i * ATM_SLOTS + 5] = 0;
   }
 
-  info.nbas = 0;
+  std::set<int> unique_Z;
+  for (const auto &a : atoms) {
+    unique_Z.insert(a.Z);
+  }
 
-  std::vector<std::vector<
-      std::tuple<int, std::vector<double>, std::vector<std::vector<double>>>>>
-      atom_shells(atoms.size());
+  std::vector<int> sorted_Z(unique_Z.begin(), unique_Z.end());
+  std::sort(sorted_Z.begin(), sorted_Z.end());
 
-  for (size_t atom_idx = 0; atom_idx < atoms.size(); ++atom_idx) {
-    std::string element;
-    for (const auto &[symbol, number] : element_table) {
-      if (number == atoms[atom_idx].Z) {
-        element = symbol;
-        break;
-      }
+  std::vector<std::pair<std::string, int>> result;
+  for (int Z : sorted_Z) {
+    auto it = element_table_reversed.find(Z);
+    if (it != element_table_reversed.end()) {
+      result.emplace_back(it->second, Z);
+    } else {
+      result.emplace_back("Unknown", Z);
     }
+  }
 
-    std::filesystem::path json_path = basis_dir / (element + ".json");
-    std::ifstream json_file(json_path);
-    if (!json_file) {
-      throw std::runtime_error(
-          std::format("Cannot open basis file for element {} at {}", element,
-                      json_path.string()));
-    }
-    nlohmann::json basis_data;
-    json_file >> basis_data;
+  std::string sep;
+#ifdef _WIN32
+  sep = "\\";
+#else
+  sep = "/";
+#endif
+  std::string basisfile = "share" + sep + "basis" + sep + _basis_name + ".g94";
+  std::string line, am;
+  std::fstream fin(basisfile, std::ios::in);
+  int idxe, idxc;
+  if (fin.good()) {
+    std::vector<std::string> wl;
+    int l, ncf1, cf1, npf, pf;
 
-    for (const auto &shell : basis_data["electron_shells"]) {
-      int angular_momentum = shell["angular_momentum"][0];
+    for (auto e : result) {
+      do // Skip the beginning for basisfile
+      {
+        getline(fin, line);
+        line = line.erase(line.find_last_not_of("\r\n") + 1);
+      } while (line != "****");
+      fin.clear();
+      fin.seekg(0, std::ios::beg);
+      std::vector<Shell> shl;
 
-      // 处理 POPLE 类型的 basis
-      if (_basis_type == BasisType::POPLE) {
-        std::vector<double> exponents;
-        for (const auto &exp : shell["exponents"]) {
-          exponents.push_back(std::stod(exp.get<std::string>()));
+      do // Each line begins with symb    0
+      {
+        getline(fin, line);
+        line = line.erase(line.find_last_not_of("\r\n") + 1);
+        if (fin.eof()) {
+          std::string err = basisfile + " is broken!!!!";
+          throw std::runtime_error(err);
         }
 
-        // 判断是否存在多个 angular_momentum
-        if (shell["angular_momentum"].size() > 1) {
-          // 如果 angular_momentum 有多个元素，拆分为多个 shell
-          size_t idx = 0;
-          for (const auto &coeff_set : shell["coefficients"]) {
-            // 每个系数集对应一个 angular_momentum
-            std::vector<double> coeff_vec;
-            for (const auto &coeff : coeff_set) {
-              coeff_vec.push_back(std::stod(coeff.get<std::string>()));
-            }
+      } while (line != e.first + "     0 ");
 
-            // 存储每个 shell，按照 angular_momentum 拆分
-            atom_shells[atom_idx].push_back(
-                {shell["angular_momentum"][idx], exponents, {coeff_vec}});
-            idx++;
+      getline(fin, line); // S/SP 3/6 1.0
+      line = line.erase(line.find_last_not_of("\r\n") + 1);
+      do {
+        wl = split(line);
+        am = wl[0];
+        npf = stoi(wl[1]);
+
+        if (am == "SP") {
+          Eigen::MatrixXd ec(npf, 2), ec1(npf, 2);
+          for (pf = 0; pf < npf; ++pf) {
+            getline(fin, line);
+            line = line.erase(line.find_last_not_of("\r\n") + 1);
+            wl = split(line);
+            std::replace(wl[1].begin() + 8, wl[1].end(), 'D', 'E');
+            std::replace(wl[2].begin() + 8, wl[2].end(), 'D', 'E');
+            ec(pf, 0) = static_cast<double>(stod(wl[0]));
+            ec(pf, 1) = static_cast<double>(stod(wl[1]));
+            ec1(pf, 0) = static_cast<double>(stod(wl[0]));
+            ec1(pf, 1) = static_cast<double>(stod(wl[2]));
           }
+
+          shlNormalize(0, ec);
+          idxe = info.env.size();
+          std::vector<double> exp;
+          for (int i = 0; i < ec.rows(); ++i) {
+            exp.push_back(ec(i, 0)); // 获取第 i 行，第 0 列的值
+          }
+          info.env.insert(info.env.end(), exp.begin(), exp.end());
+          idxc = info.env.size();
+          std::vector<double> con;
+          for (auto i = 0; i < ec.rows(); ++i) {
+            con.push_back(ec(i, 1));
+          }
+          info.env.insert(info.env.end(), con.begin(), con.end());
+
+          shl.emplace_back(
+              Shell{am, 0, 1, npf, ec, {0, npf, 1, 0, idxe, idxc}});
+
+          shlNormalize(1, ec1);
+          idxe = info.env.size();
+          std::vector<double> exp1;
+          for (auto i = 0; i < ec1.rows(); ++i) {
+            exp1.push_back(ec1(i, 0));
+          }
+          info.env.insert(info.env.end(), exp1.begin(), exp1.end());
+          int idxc = info.env.size();
+          std::vector<double> con1;
+          for (auto i = 0; i < ec1.rows(); ++i) {
+            con1.push_back(ec1(i, 1));
+          }
+          info.env.insert(info.env.end(), con1.begin(), con1.end());
+
+          shl.emplace_back(
+              Shell({am, 1, 1, npf, ec1, {1, npf, 1, 0, idxe, idxc}}));
         } else {
+          l = aml.at(am);
+          getline(fin, line);
+          line = line.erase(line.find_last_not_of("\r\n") + 1);
+          wl = split(line);
 
-          std::vector<std::vector<double>> coefficients;
-          for (const auto &coeff_set : shell["coefficients"]) {
-            std::vector<double> coeff_vec;
-            for (const auto &coeff : coeff_set) {
-              coeff_vec.push_back(std::stod(coeff.get<std::string>()));
+          ncf1 = wl.size();
+          Eigen::MatrixXd ec(npf, ncf1);
+          for (cf1 = 0; cf1 < ncf1; ++cf1) {
+            std::replace(wl[cf1].begin() + 8, wl[cf1].end(), 'D', 'E');
+            ec(0, cf1) = stod(wl[cf1]);
+          }
+          for (pf = 1; pf < npf; ++pf) {
+            getline(fin, line);
+            wl = split(line);
+            line = line.erase(line.find_last_not_of("\r\n") + 1);
+            for (cf1 = 0; cf1 < ncf1; ++cf1) {
+              std::replace(wl[cf1].begin() + 8, wl[cf1].end(), 'D', 'E');
+              ec(pf, cf1) = stod(wl[cf1]);
             }
-            coefficients.push_back(coeff_vec);
           }
 
-          // 存储为一个 shell
-          atom_shells[atom_idx].push_back(
-              {angular_momentum, exponents, coefficients});
-        }
-      }
+          shlNormalize(l, ec);
+          idxe = info.env.size();
 
-      else if (_basis_type == BasisType::DEF2) {
-        std::vector<double> exponents;
-        for (const auto &exp : shell["exponents"]) {
-          exponents.push_back(std::stod(exp.get<std::string>()));
-        }
-
-        std::vector<std::vector<double>> coefficients;
-        for (const auto &coeff_set : shell["coefficients"]) {
-          std::vector<double> coeff_vec;
-          for (const auto &coeff : coeff_set) {
-            coeff_vec.push_back(std::stod(coeff.get<std::string>()));
+          std::vector<double> exp;
+          for (auto i = 0; i < ec.rows(); ++i) {
+            exp.push_back(ec(i, 0));
           }
-          coefficients.push_back(coeff_vec);
-        }
-
-        size_t exp_pos = info.env.size();
-        info.env.insert(info.env.end(), exponents.begin(), exponents.end());
-
-        size_t coeff_pos = info.env.size();
-        for (auto &coeff_vec : coefficients) {
-          for (auto i = 0; i < coeff_vec.size(); i++) {
-            coeff_vec[i] *= CINTgto_norm(angular_momentum, exponents[i]);
+          info.env.insert(info.env.end(), exp.begin(), exp.end());
+          idxc = info.env.size();
+          std::vector<double> con;
+          for (auto i = 0; i < ec.rows(); ++i) {
+            con.push_back(ec(i, 1));
           }
+          info.env.insert(info.env.end(), con.begin(), con.end());
 
-          info.env.insert(info.env.end(), coeff_vec.begin(), coeff_vec.end());
+          shl.emplace_back(Shell{
+              am, l, ncf1 - 1, npf, ec, {l, npf, ncf1 - 1, 0, idxe, idxc}});
         }
 
-        info.bas.push_back(atom_idx);
-        info.bas.push_back(angular_momentum);
-        info.bas.push_back(exponents.size());
-        info.bas.push_back(coefficients.size());
-        info.bas.push_back(0);
-        info.bas.push_back(exp_pos);
-        info.bas.push_back(coeff_pos);
-        info.bas.push_back(0);
+        getline(fin, line); // S/SP 3/6 1.0
+        line = line.erase(line.find_last_not_of("\r\n") + 1);
+      } while (line != "****");
 
-        info.nbas++;
-      }
+      dshl[e.first] = shl;
     }
+
+    fin.close();
+  } else {
+    std::string err = basisfile + " not exist!";
+    throw std::runtime_error(err);
   }
 
-  for (size_t atom_idx = 0; atom_idx < atoms.size(); ++atom_idx) {
-    std::sort(atom_shells[atom_idx].begin(), atom_shells[atom_idx].end(),
-              [](const auto &lhs, const auto &rhs) {
-                return std::get<0>(lhs) < std::get<0>(rhs);
-              });
-
-    for (auto &shell_data : atom_shells[atom_idx]) {
-      auto &[angular_momentum, exponents, coefficients] = shell_data;
-
-      size_t exp_pos = info.env.size();
-      info.env.insert(info.env.end(), exponents.begin(), exponents.end());
-
-      size_t coeff_pos = info.env.size();
-      for (auto &coeff_vec : coefficients) {
-        for (auto i = 0; i < coeff_vec.size(); i++) {
-          coeff_vec[i] *= CINTgto_norm(angular_momentum, exponents[i]);
-        }
-
-        info.env.insert(info.env.end(), coeff_vec.begin(), coeff_vec.end());
-      }
-
-      // 将 shell 数据写入 bas
-      info.bas.push_back(atom_idx);
-      info.bas.push_back(angular_momentum);
-      info.bas.push_back(exponents.size());
-      info.bas.push_back(1);
+  for (auto i = 0; i < info.natm; i++) {
+    auto sym = atoms[i].symbol;
+    auto shls = dshl[sym];
+    for (auto &shl : shls) {
+      std::cout << shls.size() << std::endl;
+      info.bas.push_back(i);
+      info.bas.insert(info.bas.end(), shl.bas_info.begin(), shl.bas_info.end());
       info.bas.push_back(0);
-      info.bas.push_back(exp_pos);
-      info.bas.push_back(coeff_pos);
-      info.bas.push_back(0);
-
-      info.nbas++;
     }
   }
+  info.nbas = info.bas.size() / BAS_SLOTS;
 }
 
 void Mol::printAtoms() const {
@@ -291,6 +294,7 @@ void Mol::printCintInfo() const {
     std::cout << std::endl;
   }
   std::cout << "\n bas: \n" << std::endl;
+  std::cout << info.bas.size() << std::endl;
   for (auto i = 0; i < info.nbas; i++) {
     for (auto j = 0; j < BAS_SLOTS; j++) {
       std::cout << std::format("{:>4}", info.bas[i * BAS_SLOTS + j]);
