@@ -13,9 +13,19 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /O2")
 endif()
 
-# Head Only Third Party
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/eigen)
+# --------------------> eigen3 (required) <--------------------
+include(FetchContent)
+
+FetchContent_Declare(
+  eigen3
+  GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git
+  GIT_TAG master
+  GIT_SHALLOW TRUE
+)
+
+FetchContent_MakeAvailable(eigen3)
+include_directories(${eigen3_SOURCE_DIR})
+
 
 include(FetchContent)
 # --------------------> json (required) <--------------------
