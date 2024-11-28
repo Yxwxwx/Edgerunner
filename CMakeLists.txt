@@ -25,16 +25,11 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(eigen3)
 include_directories(${eigen3_SOURCE_DIR})
-
-
-include(FetchContent)
 # --------------------> json (required) <--------------------
 FetchContent_Declare(json URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz)
 FetchContent_MakeAvailable(json)
 
 # --------------------> libcint (required) <--------------------
-include(FetchContent)
-
 FetchContent_Declare(
   cint
   GIT_REPOSITORY https://github.com/sunqm/libcint.git
@@ -44,7 +39,7 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(cint)
 include_directories(${cint_BINARY_DIR}/include)
-set(CINTLIB "${cint_BINARY_DIR}/libcint.so")  # 如果你使用的是 .so 动态库
+set(CINTLIB "${cint_BINARY_DIR}/${CMAKE_SHARED_LIBRARY_PREFIX}cint${CMAKE_SHARED_LIBRARY_SUFFIX}")
 
 
 
@@ -54,13 +49,18 @@ find_package(Threads REQUIRED)
 file(GLOB_RECURSE src_gto "src/gto/*.[ch]pp")
 file(GLOB_RECURSE src_int "src/integral/*.[ch]pp")
 file(GLOB_RECURSE src_main "src/hf/*.[ch]pp")
+file(GLOB_RECURSE src_util "src/linalg/*.[ch]pp")
 
 add_definitions(-DSHARE_DIR="${CMAKE_SOURCE_DIR}/share")
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
 add_executable(Edgerunners ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp ${src_gto} ${src_int})
 
-target_link_libraries(Edgerunners ${CINTLIB} OpenMP::OpenMP_CXX Threads::Threads  nlohmann_json::nlohmann_json)
+target_link_libraries(Edgerunners 
+                      ${CINTLIB}
+                      OpenMP::OpenMP_CXX 
+                      Threads::Threads  
+                      nlohmann_json::nlohmann_json)
 
 add_custom_command(TARGET Edgerunners POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy_directory
