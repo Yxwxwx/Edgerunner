@@ -21,6 +21,18 @@ Mol::Mol(const std::string& xyz, const std::string& basis, const int spin,
     setupCintInfo();
 }
 
+void Mol::_nuclear_repulsion()
+{
+    for (size_t i = 0; i < atoms.size(); i++)
+        for (size_t j = i + 1; j < atoms.size(); j++) {
+            auto xij = atoms[i].x * angstrom_to_bohr - atoms[j].x * angstrom_to_bohr;
+            auto yij = atoms[i].y * angstrom_to_bohr - atoms[j].y * angstrom_to_bohr;
+            auto zij = atoms[i].z * angstrom_to_bohr - atoms[j].z * angstrom_to_bohr;
+            auto r2 = xij * xij + yij * yij + zij * zij;
+            auto r = sqrt(r2);
+            _nuc_rep += atoms[i].Z * atoms[j].Z / r;
+        }
+}
 void Mol::parseXYZ(const std::string& xyz)
 {
     std::istringstream iss(xyz);
@@ -60,6 +72,7 @@ void Mol::parseXYZ(const std::string& xyz)
 
         atoms.push_back({ atomSymbol, Z, x, y, z });
     }
+    _nuclear_repulsion();
 }
 
 void Mol::parseBasis(const std::string& basis)
@@ -195,7 +208,7 @@ void Mol::setupCintInfo()
                     info.env.insert(info.env.end(), con.begin(), con.end());
 
                     shl.emplace_back(
-                        Shell { am, 0, 1, npf, ec, { 0, npf, 1, 0, idxe, idxc } });
+                        Shell { am, { 0, npf, 1, 0, idxe, idxc } });
 
                     shlNormalize(1, ec1);
                     idxe = info.env.size();
@@ -212,7 +225,7 @@ void Mol::setupCintInfo()
                     info.env.insert(info.env.end(), con1.begin(), con1.end());
 
                     shl.emplace_back(
-                        Shell({ am, 1, 1, npf, ec1, { 1, npf, 1, 0, idxe, idxc } }));
+                        Shell({ am, { 1, npf, 1, 0, idxe, idxc } }));
                 }
                 else {
                     l = aml.at(am);
@@ -252,7 +265,7 @@ void Mol::setupCintInfo()
                     info.env.insert(info.env.end(), con.begin(), con.end());
 
                     shl.emplace_back(Shell {
-                        am, l, ncf1 - 1, npf, ec, { l, npf, ncf1 - 1, 0, idxe, idxc } });
+                        am, { l, npf, ncf1 - 1, 0, idxe, idxc } });
                 }
 
                 getline(fin, line); // S/SP 3/6 1.0
@@ -281,6 +294,32 @@ void Mol::setupCintInfo()
     info.nbas = info.bas.size() / BAS_SLOTS;
 }
 
+std::vector<std::string> Mol::split(const std::string& _str,
+    const std::string& _flag)
+{
+    std::vector<std::string> result;
+    std::string str = _str + _flag;
+    auto size = _flag.size();
+    std::string sub;
+
+    for (auto i = 0; i < str.size();) {
+        auto p = str.find(_flag, i);
+        sub = str.substr(i, p - i);
+        if (sub != "") {
+            result.emplace_back(sub);
+        }
+        i = p + size;
+    }
+    return result;
+}
+void Mol::shlNormalize(int l, Eigen::MatrixXd& shl)
+{
+
+    for (int i = 0; i < shl.rows(); i++) {
+        shl(i, 1) *= CINTgto_norm(l, shl(i, 0));
+    }
+}
+
 void Mol::printAtoms() const
 {
     std::cout << std::format("Atoms:{}:\n", atoms.size());
@@ -293,6 +332,8 @@ void Mol::printAtoms() const
 
 void Mol::printCintInfo() const
 {
+    std::cout << "natm = " << info.natm << "\n";
+    std::cout << "nbas = " << info.nbas << "\n";
     // atm
     std::cout << "\n atm: \n"
               << std::endl;
@@ -318,6 +359,17 @@ void Mol::printCintInfo() const
             std::cout << std::endl;
         }
     }
-    std::cout << std::endl; // 追加一个结束的换行，确保结尾不丢失
+    std::cout << std::endl;
 }
+
+cint_info Mol::get_cint_info() const
+{
+    return info;
+}
+
+double Mol::get_nuc_rep() const
+{
+    return _nuc_rep;
+}
+
 } // namespace GTO

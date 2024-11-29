@@ -3,10 +3,8 @@
 #ifndef GTO_HPP
 #define GTO_HPP
 
-#include "Eigen/Core"
 #include <Eigen/Dense>
 #include <algorithm>
-#include <filesystem>
 #include <format>
 #include <fstream>
 #include <iostream>
@@ -82,6 +80,26 @@ static const std::unordered_map<std::string, int> aml {
 };
 const auto angstrom_to_bohr = 1 / 0.52917721092;
 
+struct cint_info {
+    std::vector<int> atm;
+    std::vector<int> bas;
+    std::vector<double> env;
+    int natm;
+    int nbas;
+};
+
+struct atom {
+    std::string symbol;
+    int Z;
+    double x, y, z;
+};
+
+// Shell 结构体
+struct Shell {
+    std::string symb { "X" };
+    std::vector<int> bas_info;
+};
+
 class Mol {
 public:
     Mol(const std::string& xyz, const std::string& basis = "sto-3g",
@@ -91,35 +109,20 @@ public:
     void printAtoms() const;
     void printCintInfo() const;
 
+    cint_info get_cint_info() const;
+    double get_nuc_rep() const;
+
 private:
     std::string _xyz_info;
     std::string _basis_info;
-    int _spin;
-    int _charge;
+    int _spin { 0 };
+    int _charge { 0 };
+    double _nuc_rep { 0.0 };
 
-    struct atom {
-        std::string symbol;
-        int Z;
-        double x, y, z;
-    };
     std::vector<atom> atoms;
     std::string _basis_name;
-    // Shell 结构体
-    struct Shell {
-        std::string symb { "X" };
-        int l { 0 }, ncf { 0 }, npf { 0 };
-        Eigen::MatrixXd ec;
-        std::vector<int> bas_info;
-    };
-    std::unordered_map<std::string, std::vector<Shell>> dshl;
 
-    struct cint_info {
-        std::vector<int> atm;
-        std::vector<int> bas;
-        std::vector<double> env;
-        int natm;
-        int nbas;
-    };
+    std::unordered_map<std::string, std::vector<Shell>> dshl;
     cint_info info;
 
     void parseXYZ(const std::string& xyz);
@@ -127,30 +130,10 @@ private:
     void parseBasis(const std::string& basis);
 
     std::vector<std::string> split(const std::string& _str,
-        const std::string& _flag = " ")
-    {
-        std::vector<std::string> result;
-        std::string str = _str + _flag;
-        auto size = _flag.size();
-        std::string sub;
+        const std::string& _flag = " ");
+    void shlNormalize(int l, Eigen::MatrixXd& shl);
 
-        for (auto i = 0; i < str.size();) {
-            auto p = str.find(_flag, i);
-            sub = str.substr(i, p - i);
-            if (sub != "") {
-                result.emplace_back(sub);
-            }
-            i = p + size;
-        }
-        return result;
-    }
-    void shlNormalize(int l, Eigen::MatrixXd& shl)
-    {
-
-        for (int i = 0; i < shl.rows(); i++) {
-            shl(i, 1) *= CINTgto_norm(l, shl(i, 0));
-        }
-    }
+    void _nuclear_repulsion();
 };
 } // namespace GTO
 #endif

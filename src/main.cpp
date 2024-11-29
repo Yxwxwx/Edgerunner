@@ -1,4 +1,5 @@
 #include "gto/gto.hpp"
+#include "integral/integral.hpp"
 
 extern "C" {
 #include <cint.h>
@@ -6,6 +7,6 @@ extern "C" {
 auto main() -> int
 {
     GTO::Mol h2o("O 0 0 0; h 0 0 0.578;h 0 0 -0.578", "cc-pvdz");
-    h2o.printCintInfo();
+    Integral::Integral int_engine(h2o);
     return 0;
 }
