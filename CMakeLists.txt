@@ -18,9 +18,6 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(eigen3)
 include_directories(${eigen3_SOURCE_DIR})
-# --------------------> json (required) <--------------------
-FetchContent_Declare(json URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz)
-FetchContent_MakeAvailable(json)
 
 # --------------------> libcint (required) <--------------------
 FetchContent_Declare(
@@ -30,7 +27,19 @@ FetchContent_Declare(
   GIT_SHALLOW TRUE
 )
 
+# 添加 CMake 配置选项
+set(CMAKE_ARGS
+  -DWITH_RANGE_COULOMB=ON
+  -DENABLE_EXAMPLE=0
+  -DENABLE_TEST=0
+  -DWITH_F12=1
+  -DWITH_COULOMB_ERF=1
+  -DMIN_EXPCUTOFF=20
+  -DKEEP_GOING=1
+)
+
 FetchContent_MakeAvailable(cint)
+# 设置 CMake 编译选项
 include_directories(${cint_BINARY_DIR}/include)
 set(CINTLIB "${cint_BINARY_DIR}/${CMAKE_SHARED_LIBRARY_PREFIX}cint${CMAKE_SHARED_LIBRARY_SUFFIX}")
 
@@ -52,8 +61,7 @@ add_executable(Edgerunners ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp ${src_gto} $
 target_link_libraries(Edgerunners 
                       ${CINTLIB}
                       OpenMP::OpenMP_CXX 
-                      Threads::Threads  
-                      nlohmann_json::nlohmann_json)
+                      Threads::Threads  )
 
 add_custom_command(TARGET Edgerunners POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy_directory
