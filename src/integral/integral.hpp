@@ -132,6 +132,7 @@ public:
     const Eigen::Tensor<double, 4>& get_int2e();
 
     int get_nao() const;
+    auto calc_int() -> void;
 
 private:
     std::vector<int> _atm;
@@ -150,7 +151,6 @@ private:
 
     auto calc_int1e() -> void;
     auto calc_int2e() -> void;
-    auto calc_int() -> void;
 
     void gen_nao();
 };
