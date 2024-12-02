@@ -65,8 +65,15 @@ target_link_libraries(Edgerunners
                       OpenMP::OpenMP_CXX 
                       Threads::Threads  )
 
+set_target_properties(Edgerunners PROPERTIES
+  BUILD_RPATH "${cint_BINARY_DIR}"
+  INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib"
+  INSTALL_RPATH_USE_LINK_PATH TRUE
+)
+
 add_custom_command(TARGET Edgerunners POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy_directory
       ${CMAKE_SOURCE_DIR}/share
       ${CMAKE_BINARY_DIR}/share
 )
+
