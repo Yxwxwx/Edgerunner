@@ -11,8 +11,7 @@ Integral::Integral(GTO::Mol mol)
     _nbas = tmp.nbas;
 
     gen_nao();
-    calc_int1e();
-    calc_int2e();
+    calc_int();
 }
 
 void Integral::gen_nao()
@@ -113,6 +112,12 @@ auto Integral::calc_int2e() -> void
         }
         CINTdel_optimizer(&opt);
     }
+}
+
+auto Integral::calc_int() -> void
+{
+    calc_int1e();
+    calc_int2e();
 }
 
 const Eigen::MatrixXd& Integral::get_overlap()

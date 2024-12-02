@@ -148,8 +148,9 @@ private:
     Eigen::MatrixXd _H;
     Eigen::Tensor<double, 4> _I;
 
-    auto Integral::calc_int1e() -> void;
-    auto Integral::calc_int2e() -> void;
+    auto calc_int1e() -> void;
+    auto calc_int2e() -> void;
+    auto calc_int() -> void;
 
     void gen_nao();
 };
