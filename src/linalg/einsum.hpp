@@ -71,11 +71,11 @@ void print_formatted(const T& value)
 {
     if constexpr (std::is_integral_v<T>) {
         // fmt::print("{:12}", value); // Zero-padded integers
-        std::cout << std::format("{:12}", value);
+        std::cout << std::format("{: 12}", value);
     }
     else if constexpr (std::is_floating_point_v<T>) {
         // fmt::print("{:0.10f}", value);
-        std::cout << std::format("{:0.10f}", value);
+        std::cout << std::format("{: 0.10f}", value);
     }
 }
 
@@ -119,7 +119,7 @@ void print_recursive(const TensorType& tensor,
         std::cout << "]";
         if (!is_last) {
             // fmt::print("\n{}", indent);
-            std::cout << std::format("{}", indent);
+            std::cout << std::format("\n{}", indent);
         }
     }
 }
