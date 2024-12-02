@@ -148,6 +148,9 @@ private:
     Eigen::MatrixXd _H;
     Eigen::Tensor<double, 4> _I;
 
+    auto Integral::calc_int1e() -> void;
+    auto Integral::calc_int2e() -> void;
+
     void gen_nao();
 };
 } // namaspace Integral

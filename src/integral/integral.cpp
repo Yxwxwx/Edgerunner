@@ -11,6 +11,8 @@ Integral::Integral(GTO::Mol mol)
     _nbas = tmp.nbas;
 
     gen_nao();
+    calc_int1e();
+    calc_int2e();
 }
 
 void Integral::gen_nao()
@@ -20,10 +22,14 @@ void Integral::gen_nao()
     }
 }
 
-const Eigen::MatrixXd& Integral::get_overlap()
+auto Integral::calc_int1e() -> void
 {
     _S.resize(nao, nao);
     _S.setZero();
+    _T.resize(nao, nao);
+    _T.setZero();
+    _V.resize(nao, nao);
+    _V.setZero();
     int shls[2];
 // #pragma omp parallel for 
     for(int i = 0; i < _nbas; i++)
@@ -39,75 +45,26 @@ const Eigen::MatrixXd& Integral::get_overlap()
             int y = CINTtot_cgto_spheric(_bas.data(), j);
 
             Eigen::MatrixXd buf_s (di, dj);
+            Eigen::MatrixXd buf_t (di, dj);
+            Eigen::MatrixXd buf_v (di, dj);
+
             cint1e_ovlp_sph(buf_s.data(), shls, _atm.data(), _natm, _bas.data(), _nbas, _env.data());
+            cint1e_kin_sph(buf_t.data(), shls, _atm.data(), _natm, _bas.data(), _nbas, _env.data());
+            cint1e_nuc_sph(buf_v.data(), shls, _atm.data(), _natm, _bas.data(), _nbas, _env.data());
+
             _S.block(x, y, di, dj) = buf_s;
             _S.block(y, x, dj, di) = buf_s.transpose();
+            _T.block(x, y, di, dj) = buf_t;
+            _T.block(y, x, dj, di) = buf_t.transpose();
+            _V.block(x, y, di, dj) = buf_v;
+            _V.block(y, x, dj, di) = buf_v.transpose();
+
         }
     }
-    
-    return _S;
-}
-
-const Eigen::MatrixXd& Integral::get_kinetic()
-{
-    _T.resize(nao, nao);
-    _T.setZero();
-    int shls[2];
-    for(int i = 0; i < _nbas; i++)
-    {
-        shls[0] = i;
-        int di = CINTcgto_spheric(i, _bas.data());
-        int x = CINTtot_cgto_spheric(_bas.data(), i);
-
-        for(int j = i; j < _nbas; j++)
-        {
-            shls[1] = j;
-            int dj = CINTcgto_spheric(j, _bas.data());
-            int y = CINTtot_cgto_spheric(_bas.data(), j);
-
-            Eigen::MatrixXd buf_k (di, dj);
-            cint1e_kin_sph(buf_k.data(), shls, _atm.data(), _natm, _bas.data(), _nbas, _env.data());
-            _T.block(x, y, di, dj) = buf_k;
-            _T.block(y, x, dj, di) = buf_k.transpose();
-        }
-    }
-    return _T;
 }
 
 
-const Eigen::MatrixXd& Integral::get_nuc()
-{
-    _V.resize(nao, nao);
-    _V.setZero();
-    int shls[2];
-    for(int i = 0; i < _nbas; i++)
-    {
-        shls[0] = i;
-        int di = CINTcgto_spheric(i, _bas.data());
-        int x = CINTtot_cgto_spheric(_bas.data(), i);
-        for(int j = i; j < _nbas; j++)
-        {
-            shls[1] = j;
-            int dj = CINTcgto_spheric(j, _bas.data());
-            int y = CINTtot_cgto_spheric(_bas.data(), j);
-
-            Eigen::MatrixXd buf_n (di, dj);
-            cint1e_nuc_sph(buf_n.data(), shls, _atm.data(), _natm, _bas.data(), _nbas, _env.data());
-            _V.block(x, y, di, dj) = buf_n;
-            _V.block(y, x, dj, di) = buf_n.transpose();
-        }
-    }
-    return _V;
-}
-
-const Eigen::MatrixXd& Integral::get_H()
-{
-    _H.resize(nao, nao);
-    _H = get_kinetic() + get_nuc();
-    return _H;
-}
-
-const Eigen::Tensor<double, 4>& Integral::get_int2e()
+auto Integral::calc_int2e() -> void
 {
     _I.resize(nao, nao, nao, nao);
     _I.setZero();
@@ -156,6 +113,33 @@ const Eigen::Tensor<double, 4>& Integral::get_int2e()
         }
         CINTdel_optimizer(&opt);
     }
+}
+
+const Eigen::MatrixXd& Integral::get_overlap()
+{
+    return _S;
+}
+
+const Eigen::MatrixXd& Integral::get_kinetic()
+{
+    return _T;
+}
+
+
+const Eigen::MatrixXd& Integral::get_nuc()
+{
+    return _V;
+}
+
+const Eigen::MatrixXd& Integral::get_H()
+{
+    _H.resize(nao, nao);
+    _H = get_kinetic() + get_nuc();
+    return _H;
+}
+
+const Eigen::Tensor<double, 4>& Integral::get_int2e()
+{
     return _I;
 }
 
