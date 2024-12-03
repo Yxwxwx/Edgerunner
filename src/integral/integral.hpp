@@ -3,8 +3,8 @@
 #define INTEGRAL_HPP
 
 #include "gto/gto.hpp"
-
 #include <Eigen/Dense>
+#include <omp.h>
 #include <unsupported/Eigen/CXX11/Tensor>
 #include <vector>
 extern "C" {
