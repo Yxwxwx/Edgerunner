@@ -122,7 +122,7 @@ int cint2e_ipvip1_sph(double* buf, int* shls,
 namespace Integral {
 class Integral {
 public:
-    Integral(GTO::Mol mol);
+    Integral(GTO::Mol& mol);
     ~Integral() = default;
 
     const Eigen::MatrixXd& get_overlap();

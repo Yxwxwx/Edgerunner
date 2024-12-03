@@ -39,6 +39,9 @@ void print_tensor(const TensorType& tensor);
 template <typename TensorType>
 Eigen::Tensor<TensorType, 2> matrix_to_tensor(const Eigen::Matrix<TensorType, Eigen::Dynamic, Eigen::Dynamic>& matrix);
 
+template <typename TensorType>
+Eigen::Matrix<TensorType, Eigen::Dynamic, Eigen::Dynamic> tensor_to_matrix(const Eigen::Tensor<TensorType, 2>& tensor);
+
 template <int num_contractions, typename TensorType, int Dim1, int Dim2,
     int ResultDim>
 Eigen::Tensor<TensorType, ResultDim>
@@ -179,14 +182,29 @@ Eigen::Tensor<TensorType, 2> matrix_to_tensor(const Eigen::Matrix<TensorType, Ei
     int rows = matrix.rows();
     int cols = matrix.cols();
     Eigen::Tensor<TensorType, 2> tensor(rows, cols);
-
-    for (int i = 0; i < rows; ++i) {
-        for (int j = 0; j < cols; ++j) {
+    for (int j = 0; j < cols; ++j) {
+        for (int i = 0; i < rows; ++i) {
             tensor(i, j) = matrix(i, j);
         }
     }
 
     return tensor;
+}
+
+template <typename TensorType>
+Eigen::Matrix<TensorType, Eigen::Dynamic, Eigen::Dynamic> tensor_to_matrix(const Eigen::Tensor<TensorType, 2>& tensor)
+{
+    int rows = tensor.dimension(0);
+    int cols = tensor.dimension(1);
+    Eigen::Matrix<TensorType, Eigen::Dynamic, Eigen::Dynamic> matrix(rows, cols);
+
+    for (int j = 0; j < cols; ++j) {
+        for (int i = 0; i < rows; ++i) {
+            matrix(i, j) = tensor(i, j);
+        }
+    }
+
+    return matrix;
 }
 // Parse einsum string and perform contractions
 /**

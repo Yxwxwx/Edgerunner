@@ -1,7 +1,7 @@
 #include "integral.hpp"
 
 namespace Integral {
-Integral::Integral(GTO::Mol mol)
+Integral::Integral(GTO::Mol& mol)
 {
     auto tmp = mol.get_cint_info();
     _atm = tmp.atm;
