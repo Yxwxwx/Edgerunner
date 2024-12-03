@@ -17,6 +17,6 @@ auto main() -> int
     std::cout << int_engine.get_nuc() << "\n"
               << std::endl;
     std::cout << "Int2e: \n";
-    // YXTensor::print_tensor(int_engine.get_int2e());
+    YXTensor::print_tensor(int_engine.get_int2e());
     return 0;
 }

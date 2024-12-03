@@ -11,6 +11,8 @@ Integral::Integral(GTO::Mol mol)
     _nbas = tmp.nbas;
 
     gen_nao();
+    gen_s8();
+    gen_hermit();
     // calc_int();
 }
 
@@ -19,6 +21,30 @@ void Integral::gen_nao()
     for (auto i = 0; i < _nbas; i++) {
         nao += (_bas[i * BAS_SLOTS + ANG_OF] * 2 + 1) * _bas[i * BAS_SLOTS + NCTR_OF];
     }
+}
+void Integral::gen_s8()
+{
+    for (int i = 0; i < _nbas; i++) {
+        for (int j = i; j < _nbas; j++) {
+            for (int k = 0; k < _nbas; k++) {
+                for (int l = k; l < _nbas; l++) {
+                    if (std::tuple(i, j) <= std::tuple(k, l)) {
+                        _ijkl.emplace_back(i, j, k, l);
+                    }
+                }
+            }
+        }
+    }
+    _ijkl_size = _ijkl.size();
+}
+void Integral::gen_hermit()
+{
+    for (auto i = 0; i < _nbas; i++) {
+        for (auto j = i; j < _nbas; j++) {
+            _ij.emplace_back(i, j);
+        }
+    }
+    _ij_size = _ij.size();
 }
 
 auto Integral::calc_int1e() -> void
@@ -31,36 +57,35 @@ auto Integral::calc_int1e() -> void
     _V.setZero();
 
 #pragma omp parallel for schedule(dynamic)
-    for (int i = 0; i < _nbas; i++) {
+    for (int t = 0; t < _ij_size; t++) {
 
-        for (int j = i; j < _nbas; j++) {
+        auto [i, j] = _ij[t];
 
-            int shls[2];
-            shls[0] = i;
-            int di = CINTcgto_spheric(i, _bas.data());
-            int x = CINTtot_cgto_spheric(_bas.data(), i);
+        int shls[2];
+        shls[0] = i;
+        int di = CINTcgto_spheric(i, _bas.data());
+        int x = CINTtot_cgto_spheric(_bas.data(), i);
 
-            shls[1] = j;
-            int dj = CINTcgto_spheric(j, _bas.data());
-            int y = CINTtot_cgto_spheric(_bas.data(), j);
+        shls[1] = j;
+        int dj = CINTcgto_spheric(j, _bas.data());
+        int y = CINTtot_cgto_spheric(_bas.data(), j);
 
-            Eigen::MatrixXd buf_s(di, dj);
-            Eigen::MatrixXd buf_t(di, dj);
-            Eigen::MatrixXd buf_v(di, dj);
+        Eigen::MatrixXd buf_s(di, dj);
+        Eigen::MatrixXd buf_t(di, dj);
+        Eigen::MatrixXd buf_v(di, dj);
 
-            cint1e_ovlp_sph(buf_s.data(), shls, _atm.data(), _natm, _bas.data(), _nbas, _env.data());
-            cint1e_kin_sph(buf_t.data(), shls, _atm.data(), _natm, _bas.data(), _nbas, _env.data());
-            cint1e_nuc_sph(buf_v.data(), shls, _atm.data(), _natm, _bas.data(), _nbas, _env.data());
+        cint1e_ovlp_sph(buf_s.data(), shls, _atm.data(), _natm, _bas.data(), _nbas, _env.data());
+        cint1e_kin_sph(buf_t.data(), shls, _atm.data(), _natm, _bas.data(), _nbas, _env.data());
+        cint1e_nuc_sph(buf_v.data(), shls, _atm.data(), _natm, _bas.data(), _nbas, _env.data());
 
 #pragma omp critical
-            {
-                _S.block(x, y, di, dj) = buf_s;
-                _S.block(y, x, dj, di) = buf_s.transpose();
-                _T.block(x, y, di, dj) = buf_t;
-                _T.block(y, x, dj, di) = buf_t.transpose();
-                _V.block(x, y, di, dj) = buf_v;
-                _V.block(y, x, dj, di) = buf_v.transpose();
-            }
+        {
+            _S.block(x, y, di, dj) = buf_s;
+            _S.block(y, x, dj, di) = buf_s.transpose();
+            _T.block(x, y, di, dj) = buf_t;
+            _T.block(y, x, dj, di) = buf_t.transpose();
+            _V.block(x, y, di, dj) = buf_v;
+            _V.block(y, x, dj, di) = buf_v.transpose();
         }
     }
 }
@@ -74,26 +99,10 @@ auto Integral::calc_int2e() -> void
     CINTOpt* opt = NULL;
     cint2e_sph_optimizer(&opt, _atm.data(), _natm, _bas.data(), _nbas, _env.data());
 
-    std::vector<std::tuple<int, int, int, int>> ijkl;
+#pragma omp parallel for shared(opt)
+    for (auto t = 0; t < _ijkl_size; t++) {
 
-    for (int i = 0; i < _nbas; i++) {
-        for (int j = i; j < _nbas; j++) {
-            for (int k = 0; k < _nbas; k++) {
-                for (int l = k; l < _nbas; l++) {
-                    if (std::tuple(i, j) <= std::tuple(k, l)) {
-                        ijkl.emplace_back(i, j, k, l);
-                    }
-                }
-            }
-        }
-    }
-
-    int tot = ijkl.size();
-
-#pragma omp parallel for shared(ijkl, tot, opt)
-    for (auto t = 0; t < tot; t++) {
-
-        auto [i, j, k, l] = ijkl[t];
+        auto [i, j, k, l] = _ijkl[t];
         int shls[] = { i, j, k, l };
 
         int di = CINTcgto_spheric(i, _bas.data());

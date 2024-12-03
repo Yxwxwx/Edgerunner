@@ -152,6 +152,13 @@ private:
     auto calc_int1e() -> void;
     auto calc_int2e() -> void;
 
+    std::vector<std::tuple<int, int>> _ij;
+    std::vector<std::tuple<int, int, int, int>> _ijkl;
+    double _ij_size;
+    double _ijkl_size;
+
     void gen_nao();
+    void gen_s8();
+    void gen_hermit();
 };
 } // namaspace Integral
