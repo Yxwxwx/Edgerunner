@@ -29,14 +29,17 @@ auto Integral::calc_int1e() -> void
     _T.setZero();
     _V.resize(nao, nao);
     _V.setZero();
-    int shls[2];
-    // #pragma omp parallel for
+
+#pragma omp parallel for schedule(dynamic)
     for (int i = 0; i < _nbas; i++) {
-        shls[0] = i;
-        int di = CINTcgto_spheric(i, _bas.data());
-        int x = CINTtot_cgto_spheric(_bas.data(), i);
 
         for (int j = i; j < _nbas; j++) {
+
+            int shls[2];
+            shls[0] = i;
+            int di = CINTcgto_spheric(i, _bas.data());
+            int x = CINTtot_cgto_spheric(_bas.data(), i);
+
             shls[1] = j;
             int dj = CINTcgto_spheric(j, _bas.data());
             int y = CINTtot_cgto_spheric(_bas.data(), j);
@@ -49,12 +52,15 @@ auto Integral::calc_int1e() -> void
             cint1e_kin_sph(buf_t.data(), shls, _atm.data(), _natm, _bas.data(), _nbas, _env.data());
             cint1e_nuc_sph(buf_v.data(), shls, _atm.data(), _natm, _bas.data(), _nbas, _env.data());
 
-            _S.block(x, y, di, dj) = buf_s;
-            _S.block(y, x, dj, di) = buf_s.transpose();
-            _T.block(x, y, di, dj) = buf_t;
-            _T.block(y, x, dj, di) = buf_t.transpose();
-            _V.block(x, y, di, dj) = buf_v;
-            _V.block(y, x, dj, di) = buf_v.transpose();
+#pragma omp critical
+            {
+                _S.block(x, y, di, dj) = buf_s;
+                _S.block(y, x, dj, di) = buf_s.transpose();
+                _T.block(x, y, di, dj) = buf_t;
+                _T.block(y, x, dj, di) = buf_t.transpose();
+                _V.block(x, y, di, dj) = buf_v;
+                _V.block(y, x, dj, di) = buf_v.transpose();
+            }
         }
     }
 }
