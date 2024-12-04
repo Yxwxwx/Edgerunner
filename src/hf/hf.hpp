@@ -4,17 +4,15 @@
 
 #include "gto/gto.hpp"
 #include "integral/integral.hpp"
-#include "linalg/einsum.hpp"
-#define EIGEN_USE_THREADS
 #include <Eigen/Dense>
 
 namespace HF {
 class rhf {
 private:
     Integral::Integral int_eng;
-    double energy_tot { 0.0 };
-    double elec_energy { 0.0 };
-    double nuc_rep_energy;
+    double _energy_tot { 0.0 };
+    double _elec_energy { 0.0 };
+    double _nuc_rep_energy;
     int _max_iter;
     double _conv_tol;
     int nao;
@@ -28,8 +26,8 @@ private:
     void compute_fock_matrix();
     void compute_density_matrix();
     void compute_init_guess();
-    void compute_energy_elec();
-    void compute_energy_tot();
+    double compute_energy_elec();
+    double compute_energy_tot();
 
 public:
     rhf(GTO::Mol& mol, int max_iter = 100, double conv_tol = 1e-7);

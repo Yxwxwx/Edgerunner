@@ -1,7 +1,6 @@
 #include "gto/gto.hpp"
-#include "integral/integral.hpp"
-#include "linalg/einsum.hpp"
 #include "hf/hf.hpp"
+#include "integral/integral.hpp"
 
 auto main() -> int
 {

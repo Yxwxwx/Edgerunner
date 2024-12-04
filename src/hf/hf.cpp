@@ -7,101 +7,107 @@ rhf::rhf(GTO::Mol& mol, int max_iter, double conv_tol)
     int_eng.calc_int();
     nao = int_eng.get_nao();
     nocc = mol.get_nelec()[2] / 2;
-    nuc_rep_energy = mol.get_nuc_rep();
+    _nuc_rep_energy = mol.get_nuc_rep();
+    _S = int_eng.get_overlap();
+    _H = int_eng.get_H();
 }
 
 void rhf::compute_fock_matrix()
 {
     const auto eri = int_eng.get_int2e();
-    const auto den = YXTensor::matrix_to_tensor(_D);
+    // const auto den = YXTensor::matrix_to_tensor(_D);
 
-// #ifdef _OPENMP                    AI_generated code for parallelization
-//     GET_OMP_NUM_THREADS(n_thread)
-//     std::vector<Eigen::MatrixXd> J_thread(n_thread);
-//     std::vector<Eigen::MatrixXd> K_thread(n_thread);
-//     #pragma omp parallel for num_threads(n_thread)
-//     for (int i =0; i < n_thread; ++i) {}
+    Eigen::MatrixXd J = Eigen::MatrixXd::Zero(nao, nao);
+#pragma omp parallel
+    {
+        Eigen::MatrixXd local_J = Eigen::MatrixXd::Zero(nao, nao);
+#pragma omp for collapse(2)
+        for (int i = 0; i < nao; ++i) {
+            for (int j = 0; j < nao; ++j) {
+                for (int k = 0; k < nao; ++k) {
+                    for (int l = 0; l < nao; ++l) {
+                        local_J(i, j) += eri(i, j, k, l) * _D(k, l);
+                    }
+                }
+            }
+        }
 
-    // Eigen::MatrixXd J = Eigen::MatrixXd::Zero(nao, nao);
-    // for (int i = 0; i < nao; ++i) {
-    //     for (int j = 0; j < nao; ++j) {
-    //         for (int k = 0; k < nao; ++k) {
-    //             for (int l = 0; l < nao; ++l) {
-    //                 J(i, j) += eri(i, j, k, l) * den(k, l);
-    //             }
-    //         }
-    //     }
-    // }
+#pragma omp critical
+        J += local_J;
+    }
 
-    // Eigen::MatrixXd K = Eigen::MatrixXd::Zero(nao, nao);
-    // for (int i = 0; i < nao; ++i) {
-    //     for (int j = 0; j < nao; ++j) {
-    //         for (int k = 0; k < nao; ++k) {
-    //             for (int l = 0; l < nao; ++l) {
-    //                 K(i, j) += eri(i, k, j, l) * den(k, l);
-    //             }
-    //         }
-    //     }
-    // }
-    // auto J = YXTensor::einsum<2, double, 4, 2, 2>("ijkl, kl->ij", eri, den);
-    // auto K = YXTensor::einsum<2, double, 4, 2, 2>("ikjl, kl->ij", eri, den);
+    Eigen::MatrixXd K = Eigen::MatrixXd::Zero(nao, nao);
+#pragma omp parallel
+    {
+        Eigen::MatrixXd local_K = Eigen::MatrixXd::Zero(nao, nao);
+#pragma omp for collapse(2)
+        for (int i = 0; i < nao; ++i) {
+            for (int j = 0; j < nao; ++j) {
+                for (int k = 0; k < nao; ++k) {
+                    for (int l = 0; l < nao; ++l) {
+                        local_K(i, j) += eri(i, k, j, l) * _D(k, l);
+                    }
+                }
+            }
+        }
 
-    // Eigen::MatrixXd J_mat = YXTensor::tensor_to_matrix(J);
-    // Eigen::MatrixXd K_mat = YXTensor::tensor_to_matrix(K);
-    // _F = 2 * J - K;
-    auto J = YXTensor::einsum<2, double, 4, 2, 2>("ijkl, kl->ij", eri, den);
-    auto K = YXTensor::einsum<2, double, 4, 2, 2>("ikjl, kl->ij", eri, den);
-    _F = _H + 2 * YXTensor::tensor_to_matrix(J) + YXTensor::tensor_to_matrix(K);
+#pragma omp critical
+        K += local_K;
+    }
+
+    _F = _H + 2 * J - K;
+    // auto J = YXTensor::einsum<2, double, 4, 2, 2>("ijkl,kl->ij", eri, den);
+    // auto K = YXTensor::einsum<2, double, 4, 2, 2>("ikjl,kl->ij", eri, den);
+    // _F = _H + 2 * YXTensor::tensor_to_matrix(J) + YXTensor::tensor_to_matrix(K);
 }
 void rhf::compute_density_matrix()
 {
-    auto S = int_eng.get_overlap();
-    Eigen::GeneralizedSelfAdjointEigenSolver<Eigen::MatrixXd> solver(_F, S);
+    Eigen::GeneralizedSelfAdjointEigenSolver<Eigen::MatrixXd> solver(_F, _S);
     Eigen::MatrixXd C = solver.eigenvectors();
-    Eigen::MatrixXd C_occ = C.block(0, 0, nao, nocc);
+    Eigen::MatrixXd C_occ = C.leftCols(nocc);
     _D = C_occ * C_occ.transpose();
 }
 
 void rhf::compute_init_guess()
 {
-    _F = int_eng.get_H();
+    _F = _H;
+    compute_density_matrix();
 }
 
-void rhf::compute_energy_elec()
+double rhf::compute_energy_elec()
 {
-    auto H = int_eng.get_H();
+    auto elec_e { 0.0 };
     for (int i = 0; i < nao; ++i) {
         for (int j = 0; j < nao; ++j) {
-            elec_energy += (H(i, j) + _F(i, j)) * _D(i, j);
+            elec_e += (_H(i, j) + _F(i, j)) * _D(i, j);
         }
     }
+    return elec_e;
 }
 
-void rhf::compute_energy_tot()
+double rhf::compute_energy_tot()
 {
-    compute_energy_elec();
-    energy_tot = nuc_rep_energy + elec_energy;
+    return compute_energy_elec() + _nuc_rep_energy;
 }
-
 
 void rhf::kernel()
 {
-    double new_energy = 0.0;
-    double d_energy = 0.0;
+    double old_energy = 0.0;
+    double delta_energy = 0.0;
     compute_init_guess();
-    compute_density_matrix();
-    for (int i = 1; i < _max_iter; ++i) {
+
+    for (int i = 1; i <= _max_iter; ++i) {
         compute_fock_matrix();
-        compute_energy_tot();
+        auto hf_energy = compute_energy_tot();
         compute_density_matrix();
-        d_energy = std::abs(new_energy - energy_tot);
-        new_energy = energy_tot;
-        std::cout << "Iteration: " << i;
-        std::cout << " Energy: " << energy_tot;
-        std::cout << " Difference: " << d_energy << std::endl;
-        if (d_energy < _conv_tol) 
-        {
+        delta_energy = std::abs(hf_energy - old_energy);
+        old_energy = hf_energy;
+        std::cout << std::format("Iteration: {:>3} | Energy: {:>12.6f} | Difference: {:>12.6e}\n",
+            i, hf_energy, delta_energy);
+
+        if (delta_energy < _conv_tol) {
             std::cout << "Convergence achieved in " << i << " iterations" << std::endl;
+            _energy_tot = hf_energy;
             break;
         }
     }
@@ -118,6 +124,6 @@ const Eigen::MatrixXd& rhf::get_density_matrix() const
 }
 const double rhf::get_energy_tot() const
 {
-    return energy_tot;
+    return _energy_tot;
 }
 } // namespace HF
