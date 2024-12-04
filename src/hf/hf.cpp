@@ -21,10 +21,10 @@ void rhf::compute_fock_matrix()
     {
         Eigen::MatrixXd local_J = Eigen::MatrixXd::Zero(nao, nao);
 #pragma omp for collapse(2)
-        for (int i = 0; i < nao; ++i) {
-            for (int j = 0; j < nao; ++j) {
-                for (int k = 0; k < nao; ++k) {
-                    for (int l = 0; l < nao; ++l) {
+        for (int l = 0; l < nao; ++l) {
+            for (int k = 0; k < nao; ++k) {
+                for (int j = 0; j < nao; ++j) {
+                    for (int i = 0; i < nao; ++i) {
                         local_J(i, j) += eri(i, j, k, l) * _D(k, l);
                     }
                 }
@@ -40,10 +40,10 @@ void rhf::compute_fock_matrix()
     {
         Eigen::MatrixXd local_K = Eigen::MatrixXd::Zero(nao, nao);
 #pragma omp for collapse(2)
-        for (int i = 0; i < nao; ++i) {
+        for (int l = 0; l < nao; ++l) {
             for (int j = 0; j < nao; ++j) {
                 for (int k = 0; k < nao; ++k) {
-                    for (int l = 0; l < nao; ++l) {
+                    for (int i = 0; i < nao; ++i) {
                         local_K(i, j) += eri(i, k, j, l) * _D(k, l);
                     }
                 }
@@ -77,11 +77,7 @@ void rhf::compute_init_guess()
 double rhf::compute_energy_elec()
 {
     auto elec_e { 0.0 };
-    for (int i = 0; i < nao; ++i) {
-        for (int j = 0; j < nao; ++j) {
-            elec_e += (_H(i, j) + _F(i, j)) * _D(i, j);
-        }
-    }
+    elec_e = _D.cwiseProduct(_H + _F).sum();
     return elec_e;
 }
 

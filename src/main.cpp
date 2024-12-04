@@ -4,7 +4,7 @@
 
 auto main() -> int
 {
-    GTO::Mol H2O("O 0 0 0; H 0 -0.757 0.587; H 0 0.757 0.587", "sto-3g");
+    GTO::Mol H2O("O 0 0 0; H 0 -0.757 0.587; H 0 0.757 0.587", "cc-pvqz");
     HF::rhf rhf_engine(H2O);
     rhf_engine.kernel();
     // Integral::Integral int_engine(He);
