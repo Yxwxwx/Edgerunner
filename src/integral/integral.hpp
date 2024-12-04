@@ -126,7 +126,7 @@ namespace Integral {
 class Integral {
 public:
     Integral(GTO::Mol& mol);
-    ~Integral() = default;
+    ~Integral() { CINTdel_optimizer(&opt); }
 
     const Eigen::MatrixXd& get_overlap();
     const Eigen::MatrixXd& get_kinetic();
@@ -136,6 +136,13 @@ public:
 
     int get_nao() const;
     auto calc_int() -> void;
+    auto calc_int1e() -> void;
+    auto calc_int2e() -> void;
+
+    auto get_ijkl() -> const std::vector<std::tuple<int, int, int, int>>;
+    auto get_dim(int i, int j, int k, int l) -> const std::tuple<int, int, int, int>;
+    auto get_offset(int i, int j, int k, int l) -> const std::tuple<int, int, int, int>;
+    auto calc_int2e_shell(std::tuple<int, int, int, int>& ijkl, std::tuple<int, int, int, int>& dim) -> std::vector<double>;
 
 private:
     std::vector<int> _atm;
@@ -145,15 +152,13 @@ private:
     int _natm;
     int _nbas;
     int nao { 0 };
+    CINTOpt* opt = NULL;
 
     Eigen::MatrixXd _S;
     Eigen::MatrixXd _T;
     Eigen::MatrixXd _V;
     Eigen::MatrixXd _H;
     Eigen::Tensor<double, 4> _I;
-
-    auto calc_int1e() -> void;
-    auto calc_int2e() -> void;
 
     std::vector<std::tuple<int, int>> _ij;
     std::vector<std::tuple<int, int, int, int>> _ijkl;

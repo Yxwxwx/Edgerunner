@@ -14,6 +14,7 @@ Integral::Integral(GTO::Mol& mol)
     gen_s8();
     gen_hermit();
     // calc_int();
+    cint2e_sph_optimizer(&opt, _atm.data(), _natm, _bas.data(), _nbas, _env.data());
 }
 
 void Integral::gen_nao()
@@ -97,9 +98,6 @@ auto Integral::calc_int2e() -> void
     _I.resize(nao, nao, nao, nao);
     _I.setZero();
 
-    CINTOpt* opt = NULL;
-    cint2e_sph_optimizer(&opt, _atm.data(), _natm, _bas.data(), _nbas, _env.data());
-
 #pragma omp parallel for shared(opt)
     for (auto t = 0; t < _ijkl_size; t++) {
 
@@ -133,11 +131,22 @@ auto Integral::calc_int2e() -> void
             _I.slice(Eigen::array<int, 4> { h, z, y, x }, Eigen::array<int, 4> { dl, dk, dj, di }) = buf_i.shuffle(Eigen::array<int, 4> { 3, 2, 1, 0 });
         }
     }
-    CINTdel_optimizer(&opt);
 
     std::cout << "Integral calculation time: "
               << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count() / 1000.0
               << " s" << std::endl;
+}
+
+auto Integral::calc_int2e_shell(std::tuple<int, int, int, int>& ijkl, std::tuple<int, int, int, int>& dim) -> std::vector<double>
+{
+    auto [i, j, k, l] = ijkl;
+    auto [di, dj, dk, dl] = dim;
+    int shls[] = { i, j, k, l };
+
+    std::vector<double> buf_i(di * dj * dk * dl);
+    cint2e_sph(buf_i.data(), shls, _atm.data(), _natm, _bas.data(), _nbas, _env.data(), NULL);
+
+    return buf_i;
 }
 
 auto Integral::calc_int() -> void
@@ -173,5 +182,28 @@ const Eigen::Tensor<double, 4>& Integral::get_int2e()
     return _I;
 }
 
+auto Integral::get_ijkl() -> const std::vector<std::tuple<int, int, int, int>>
+{
+    return _ijkl;
+}
+auto Integral::get_offset(int i, int j, int k, int l) -> const std::tuple<int, int, int, int>
+{
+
+    int x = CINTtot_cgto_spheric(_bas.data(), i);
+    int y = CINTtot_cgto_spheric(_bas.data(), j);
+    int z = CINTtot_cgto_spheric(_bas.data(), k);
+    int h = CINTtot_cgto_spheric(_bas.data(), l);
+    return { x, y, z, h };
+}
+
+auto Integral::get_dim(int i, int j, int k, int l) -> const std::tuple<int, int, int, int>
+{
+    int di = CINTcgto_spheric(i, _bas.data());
+    int dj = CINTcgto_spheric(j, _bas.data());
+    int dk = CINTcgto_spheric(k, _bas.data());
+    int dl = CINTcgto_spheric(l, _bas.data());
+    return { di, dj, dk, dl };
+}
 int Integral::get_nao() const { return nao; }
+
 } // namespace Integral

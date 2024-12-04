@@ -1,16 +1,24 @@
 #include "hf.hpp"
 
 namespace HF {
-rhf::rhf(GTO::Mol& mol, int max_iter, double conv_tol)
-    : int_eng(mol), _max_iter(max_iter), _conv_tol(conv_tol)
+rhf::rhf(GTO::Mol& mol, int max_iter, double conv_tol, bool direct)
+    : int_eng(mol), _max_iter(max_iter), _conv_tol(conv_tol), _direct(direct)
 {
-    int_eng.calc_int();
+    if (!_direct) {
+        int_eng.calc_int();
+        _I = int_eng.get_int2e();
+    }
+    else {
+        int_eng.calc_int1e();
+        _ijkl = int_eng.get_ijkl();
+        _ijkl_size = _ijkl.size();
+    }
+
     nao = int_eng.get_nao();
     nocc = mol.get_nelec()[2] / 2;
     _nuc_rep_energy = mol.get_nuc_rep();
     _S = int_eng.get_overlap();
     _H = int_eng.get_H();
-    _I = int_eng.get_int2e();
 }
 
 void rhf::compute_fock_matrix()
@@ -35,10 +43,43 @@ void rhf::compute_fock_matrix()
         G += local_G;
     }
     _F = _H + G;
-    // const auto den = YXTensor::matrix_to_tensor(_D);
-    //  auto J_ = YXTensor::einsum<2, double, 4, 2, 2>("ijkl,kl->ij", eri, den);
-    //  auto K_ = YXTensor::einsum<2, double, 4, 2, 2>("ikjl,kl->ij", eri, den);
-    //  _F = _H + 2 * YXTensor::tensor_to_matrix(J_) - YXTensor::tensor_to_matrix(K_);
+
+    //     const auto den = YXTensor::matrix_to_tensor(_D);
+    //     auto result = _I.shuffle(Eigen::array<int, 4> { 0, 2, 1, 3 }) * -1.0 + _I * 2.0;
+    //     auto G_ = YXTensor::einsum<2, double, 4, 2, 2>("ijkl,kl->ij", result, den);
+    //     _F = _H + YXTensor::tensor_to_matrix(G_);
+}
+
+void rhf::compute_fock_matrix_direct()
+{
+    Eigen::MatrixXd G = Eigen::MatrixXd::Zero(nao, nao);
+    // std::cout << _ijkl_size << std::endl;
+    for (int t = 0; t < _ijkl_size; t++) {
+        auto [i, j, k, l] = _ijkl[t];
+        auto dim = int_eng.get_dim(i, j, k, l);
+        auto [di, dj, dk, dl] = dim;
+        auto [x, y, z, w] = int_eng.get_offset(i, j, k, l);
+        double s1234_deg = degeneracy(i, j, k, l);
+
+        auto buf = int_eng.calc_int2e_shell(_ijkl[t], dim);
+
+        int fijkl { 0 };
+        for (int fi = 0; fi < di; fi++) {
+            for (int fj = 0; fj < dj; fj++) {
+                for (int fk = 0; fk < dk; fk++) {
+                    for (int fl = 0; fl < dl; fl++, fijkl++) {
+                        G(x + fi, y + fj) += _D(z + fk, w + fl) * buf[fijkl] * s1234_deg;
+                        G(z + fk, w + fl) += _D(x + fi, y + fj) * buf[fijkl] * s1234_deg;
+                        G(x + fi, z + fk) -= 0.25 * _D(y + fj, w + fl) * buf[fijkl] * s1234_deg;
+                        G(y + fj, w + fl) -= 0.25 * _D(x + fi, z + fk) * buf[fijkl] * s1234_deg;
+                        G(x + fi, w + fl) -= 0.25 * _D(y + fj, z + fk) * buf[fijkl] * s1234_deg;
+                        G(y + fj, z + fk) -= 0.25 * _D(x + fi, w + fl) * buf[fijkl] * s1234_deg;
+                    }
+                }
+            }
+        }
+    }
+    _F = _H + 0.5 * (G + G.transpose());
 }
 void rhf::compute_density_matrix()
 {
@@ -76,7 +117,14 @@ auto rhf::kernel() -> bool
     compute_init_guess();
 
     for (int i = 1; i <= _max_iter; ++i) {
-        compute_fock_matrix();
+        if (!_direct) {
+
+            compute_fock_matrix();
+        }
+        else {
+            compute_fock_matrix_direct();
+        }
+
         auto hf_energy = compute_energy_tot();
         compute_density_matrix();
         delta_energy = std::abs(hf_energy - old_energy);

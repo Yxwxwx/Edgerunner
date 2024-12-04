@@ -20,6 +20,9 @@ private:
     double _conv_tol;
     int nao;
     int nocc;
+    bool _direct;
+    std::vector<std::tuple<int, int, int, int>> _ijkl;
+    int _ijkl_size;
 
     Eigen::MatrixXd _S;
     Eigen::MatrixXd _H;
@@ -28,13 +31,23 @@ private:
     Eigen::Tensor<double, 4> _I;
 
     void compute_fock_matrix();
+    void compute_fock_matrix_direct();
     void compute_density_matrix();
     void compute_init_guess();
     double compute_energy_elec();
     double compute_energy_tot();
 
+    double degeneracy(const int i, const int j, const int k, const int l)
+    {
+        auto s1 = i, s2 = j, s3 = k, s4 = l;
+        auto s12_deg = (s1 == s2) ? 1.0 : 2.0;
+        auto s34_deg = (s3 == s4) ? 1.0 : 2.0;
+        auto s12_34_deg = (s1 == s3) ? (s2 == s4 ? 1.0 : 2.0) : 2.0;
+        return s12_deg * s34_deg * s12_34_deg;
+    }
+
 public:
-    rhf(GTO::Mol& mol, int max_iter = 100, double conv_tol = 1e-7);
+    rhf(GTO::Mol& mol, int max_iter = 100, double conv_tol = 1e-7, bool direct = true);
     ~rhf() = default;
 
     const Eigen::MatrixXd& get_fock_matrix() const;
