@@ -12,8 +12,8 @@ void rhf::compute_fock_matrix()
     const auto eri = int_eng.get_int2e();
     const auto den = YXTensor::matrix_to_tensor(_D);
 
-    auto J = YXTensor::einsum<2, double, 4, 2, 2>("ijkl, kl->ij", std::move(eri), std::move(den));
-    auto K = YXTensor::einsum<2, double, 4, 2, 2>("ikjl, kl->ij", std::move(eri), std::move(den));
+    auto J = YXTensor::einsum<2, double, 4, 2, 2>("ijkl, kl->ij", eri, den);
+    auto K = YXTensor::einsum<2, double, 4, 2, 2>("ikjl, kl->ij", eri, den);
     _F = _H + 2 * YXTensor::tensor_to_matrix(J) + YXTensor::tensor_to_matrix(K);
 }
 void rhf::compute_density_matrix()

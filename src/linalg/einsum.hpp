@@ -46,15 +46,15 @@ Eigen::Matrix<TensorType, Eigen::Dynamic, Eigen::Dynamic> tensor_to_matrix(const
 template <int num_contractions, typename TensorType, int Dim1, int Dim2,
     int ResultDim>
 Eigen::Tensor<TensorType, ResultDim>
-einsum(std::string&& einsum_str, const Eigen::Tensor<TensorType, Dim1>&& input1,
-    const Eigen::Tensor<TensorType, Dim2>&& input2);
+einsum(std::string&& einsum_str, const Eigen::Tensor<TensorType, Dim1>& input1,
+    const Eigen::Tensor<TensorType, Dim2>& input2);
 
 template <int num_contractions, typename TensorType, int Dim1, int Dim2,
     int ResultDim>
 void einsum(const std::string&& einsum_str,
-    const Eigen::Tensor<TensorType, Dim1>&& input1,
-    const Eigen::Tensor<TensorType, Dim2>&& input2,
-    Eigen::Tensor<TensorType, ResultDim>&& result_input);
+    const Eigen::Tensor<TensorType, Dim1>& input1,
+    const Eigen::Tensor<TensorType, Dim2>& input2,
+    Eigen::Tensor<TensorType, ResultDim>& result_input);
 
 // namespace Tensor
 
@@ -335,8 +335,8 @@ parse_einsum_string(const std::string& einsum_str, std::string& result_indices,
 template <int num_contractions, typename TensorType, int Dim1, int Dim2,
     int ResultDim>
 Eigen::Tensor<TensorType, ResultDim>
-einsum(std::string&& einsum_str, const Eigen::Tensor<TensorType, Dim1>&& input1,
-    const Eigen::Tensor<TensorType, Dim2>&& input2)
+einsum(std::string&& einsum_str, const Eigen::Tensor<TensorType, Dim1>& input1,
+    const Eigen::Tensor<TensorType, Dim2>& input2)
 {
 
     std::vector<size_t> left_idx;
@@ -374,7 +374,7 @@ einsum(std::string&& einsum_str, const Eigen::Tensor<TensorType, Dim1>&& input1,
 
     Eigen::ThreadPool pool(n_thread);
     Eigen::ThreadPoolDevice my_device(&pool, n_thread);
-    result.device(my_device) = std::move(input1).contract(std::move(input2), contract_dims);
+    result.device(my_device) = input1.contract(input2, contract_dims);
 
     if (shuffle_idx.empty()) {
         return result;
@@ -388,9 +388,9 @@ einsum(std::string&& einsum_str, const Eigen::Tensor<TensorType, Dim1>&& input1,
 template <int num_contractions, typename TensorType, int Dim1, int Dim2,
     int ResultDim>
 void einsum(const std::string&& einsum_str,
-    const Eigen::Tensor<TensorType, Dim1>&& input1,
-    const Eigen::Tensor<TensorType, Dim2>&& input2,
-    Eigen::Tensor<TensorType, ResultDim>&& result_input)
+    const Eigen::Tensor<TensorType, Dim1>& input1,
+    const Eigen::Tensor<TensorType, Dim2>& input2,
+    Eigen::Tensor<TensorType, ResultDim>& result_input)
 {
     std::vector<size_t> left_idx;
     std::vector<size_t> right_idx;
@@ -427,7 +427,7 @@ void einsum(const std::string&& einsum_str,
 
     Eigen::ThreadPool pool(n_thread);
     Eigen::ThreadPoolDevice my_device(&pool, n_thread);
-    result.device(my_device) = std::move(input1).contract(std::move(input2), contract_dims);
+    result.device(my_device) = input1.contract(input2, contract_dims);
 
     if (shuffle_idx.empty()) {
         result_input = result;
