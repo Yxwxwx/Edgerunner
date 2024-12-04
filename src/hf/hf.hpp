@@ -5,6 +5,7 @@
 #include "gto/gto.hpp"
 #include "integral/integral.hpp"
 #include "linalg/einsum.hpp"
+#define EIGEN_USE_THREADS
 #include <Eigen/Dense>
 
 namespace HF {
@@ -19,6 +20,8 @@ private:
     int nao;
     int nocc;
 
+    Eigen::MatrixXd _S;
+    Eigen::MatrixXd _H;
     Eigen::MatrixXd _F;
     Eigen::MatrixXd _D;
 

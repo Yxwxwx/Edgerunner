@@ -12,8 +12,8 @@ rhf::rhf(GTO::Mol& mol, int max_iter, double conv_tol)
 
 void rhf::compute_fock_matrix()
 {
-    auto eri = int_eng.get_int2e();
-    auto den = YXTensor::matrix_to_tensor(_D);
+    const auto eri = int_eng.get_int2e();
+    const auto den = YXTensor::matrix_to_tensor(_D);
 
 // #ifdef _OPENMP                    AI_generated code for parallelization
 //     GET_OMP_NUM_THREADS(n_thread)
@@ -22,33 +22,36 @@ void rhf::compute_fock_matrix()
 //     #pragma omp parallel for num_threads(n_thread)
 //     for (int i =0; i < n_thread; ++i) {}
 
-    Eigen::MatrixXd J = Eigen::MatrixXd::Zero(nao, nao);
-    for (int i = 0; i < nao; ++i) {
-        for (int j = 0; j < nao; ++j) {
-            for (int k = 0; k < nao; ++k) {
-                for (int l = 0; l < nao; ++l) {
-                    J(i, j) += eri(i, j, k, l) * den(k, l);
-                }
-            }
-        }
-    }
+    // Eigen::MatrixXd J = Eigen::MatrixXd::Zero(nao, nao);
+    // for (int i = 0; i < nao; ++i) {
+    //     for (int j = 0; j < nao; ++j) {
+    //         for (int k = 0; k < nao; ++k) {
+    //             for (int l = 0; l < nao; ++l) {
+    //                 J(i, j) += eri(i, j, k, l) * den(k, l);
+    //             }
+    //         }
+    //     }
+    // }
 
-    Eigen::MatrixXd K = Eigen::MatrixXd::Zero(nao, nao);
-    for (int i = 0; i < nao; ++i) {
-        for (int j = 0; j < nao; ++j) {
-            for (int k = 0; k < nao; ++k) {
-                for (int l = 0; l < nao; ++l) {
-                    K(i, j) += eri(i, k, j, l) * den(k, l);
-                }
-            }
-        }
-    }
+    // Eigen::MatrixXd K = Eigen::MatrixXd::Zero(nao, nao);
+    // for (int i = 0; i < nao; ++i) {
+    //     for (int j = 0; j < nao; ++j) {
+    //         for (int k = 0; k < nao; ++k) {
+    //             for (int l = 0; l < nao; ++l) {
+    //                 K(i, j) += eri(i, k, j, l) * den(k, l);
+    //             }
+    //         }
+    //     }
+    // }
     // auto J = YXTensor::einsum<2, double, 4, 2, 2>("ijkl, kl->ij", eri, den);
     // auto K = YXTensor::einsum<2, double, 4, 2, 2>("ikjl, kl->ij", eri, den);
 
     // Eigen::MatrixXd J_mat = YXTensor::tensor_to_matrix(J);
     // Eigen::MatrixXd K_mat = YXTensor::tensor_to_matrix(K);
-    _F = 2 * J - K;
+    // _F = 2 * J - K;
+    auto J = YXTensor::einsum<2, double, 4, 2, 2>("ijkl, kl->ij", eri, den);
+    auto K = YXTensor::einsum<2, double, 4, 2, 2>("ikjl, kl->ij", eri, den);
+    _F = _H + 2 * YXTensor::tensor_to_matrix(J) + YXTensor::tensor_to_matrix(K);
 }
 void rhf::compute_density_matrix()
 {
