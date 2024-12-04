@@ -2,8 +2,10 @@
 #ifndef __HF_HPP__
 #define __HF_HPP__
 
+#define EIGEN_USE_THREADS
 #include "gto/gto.hpp"
 #include "integral/integral.hpp"
+#include "linalg/einsum.hpp"
 #include <Eigen/Dense>
 
 namespace HF {
