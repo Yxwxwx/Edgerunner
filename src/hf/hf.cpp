@@ -102,7 +102,7 @@ void rhf::kernel()
         compute_density_matrix();
         delta_energy = std::abs(hf_energy - old_energy);
         old_energy = hf_energy;
-        std::cout << std::format("Iteration: {:>3} | Energy: {:>12.6f} | Difference: {:>12.6e}\n",
+        std::cout << std::format("Iteration: {:>3} | Energy: {:>12.12f} | Difference: {:>12.6e}\n",
             i, hf_energy, delta_energy);
 
         if (delta_energy < _conv_tol) {
