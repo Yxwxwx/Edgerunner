@@ -46,12 +46,12 @@ Eigen::Matrix<TensorType, Eigen::Dynamic, Eigen::Dynamic> tensor_to_matrix(const
 template <int num_contractions, typename TensorType, int Dim1, int Dim2,
     int ResultDim>
 Eigen::Tensor<TensorType, ResultDim>
-einsum(std::string&& einsum_str, const Eigen::Tensor<TensorType, Dim1>& input1,
+einsum(std::string einsum_str, const Eigen::Tensor<TensorType, Dim1>& input1,
     const Eigen::Tensor<TensorType, Dim2>& input2);
 
 template <int num_contractions, typename TensorType, int Dim1, int Dim2,
     int ResultDim>
-void einsum(const std::string&& einsum_str,
+void einsum(const std::string einsum_str,
     const Eigen::Tensor<TensorType, Dim1>& input1,
     const Eigen::Tensor<TensorType, Dim2>& input2,
     Eigen::Tensor<TensorType, ResultDim>& result_input);
@@ -335,7 +335,7 @@ parse_einsum_string(const std::string& einsum_str, std::string& result_indices,
 template <int num_contractions, typename TensorType, int Dim1, int Dim2,
     int ResultDim>
 Eigen::Tensor<TensorType, ResultDim>
-einsum(std::string&& einsum_str, const Eigen::Tensor<TensorType, Dim1>& input1,
+einsum(std::string einsum_str, const Eigen::Tensor<TensorType, Dim1>& input1,
     const Eigen::Tensor<TensorType, Dim2>& input2)
 {
 
@@ -370,7 +370,7 @@ einsum(std::string&& einsum_str, const Eigen::Tensor<TensorType, Dim1>& input1,
 
     int n_thread;
     GET_OMP_NUM_THREADS(n_thread);
-    std::cout << "Number of threads to use: " << n_thread << std::endl;
+    // std::cout << "Number of threads to use: " << n_thread << std::endl;
 
     Eigen::ThreadPool pool(n_thread);
     Eigen::ThreadPoolDevice my_device(&pool, n_thread);
@@ -387,7 +387,7 @@ einsum(std::string&& einsum_str, const Eigen::Tensor<TensorType, Dim1>& input1,
 }
 template <int num_contractions, typename TensorType, int Dim1, int Dim2,
     int ResultDim>
-void einsum(const std::string&& einsum_str,
+void einsum(const std::string einsum_str,
     const Eigen::Tensor<TensorType, Dim1>& input1,
     const Eigen::Tensor<TensorType, Dim2>& input2,
     Eigen::Tensor<TensorType, ResultDim>& result_input)
@@ -423,7 +423,7 @@ void einsum(const std::string&& einsum_str,
 
     int n_thread;
     GET_OMP_NUM_THREADS(n_thread);
-    std::cout << "Number of threads to use: " << n_thread << std::endl;
+    // std::cout << "Number of threads to use: " << n_thread << std::endl;
 
     Eigen::ThreadPool pool(n_thread);
     Eigen::ThreadPoolDevice my_device(&pool, n_thread);

@@ -15,7 +15,6 @@ rhf::rhf(GTO::Mol& mol, int max_iter, double conv_tol)
 void rhf::compute_fock_matrix()
 {
     const auto eri = int_eng.get_int2e();
-    // const auto den = YXTensor::matrix_to_tensor(_D);
 
     Eigen::MatrixXd J = Eigen::MatrixXd::Zero(nao, nao);
 #pragma omp parallel
@@ -56,9 +55,10 @@ void rhf::compute_fock_matrix()
     }
 
     _F = _H + 2 * J - K;
-    // auto J = YXTensor::einsum<2, double, 4, 2, 2>("ijkl,kl->ij", eri, den);
-    // auto K = YXTensor::einsum<2, double, 4, 2, 2>("ikjl,kl->ij", eri, den);
-    // _F = _H + 2 * YXTensor::tensor_to_matrix(J) + YXTensor::tensor_to_matrix(K);
+    // const auto den = YXTensor::matrix_to_tensor(_D);
+    //  auto J_ = YXTensor::einsum<2, double, 4, 2, 2>("ijkl,kl->ij", eri, den);
+    //  auto K_ = YXTensor::einsum<2, double, 4, 2, 2>("ikjl,kl->ij", eri, den);
+    //  _F = _H + 2 * YXTensor::tensor_to_matrix(J_) - YXTensor::tensor_to_matrix(K_);
 }
 void rhf::compute_density_matrix()
 {
