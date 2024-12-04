@@ -111,6 +111,7 @@ public:
 
     cint_info get_cint_info() const;
     double get_nuc_rep() const;
+    const std::array<int, 3>& get_nelec() const;
 
 private:
     std::string _xyz_info;
@@ -118,6 +119,7 @@ private:
     int _spin { 0 };
     int _charge { 0 };
     double _nuc_rep { 0.0 };
+    std::array<int, 3> _nelec;
 
     std::vector<atom> atoms;
     std::string _basis_name;
@@ -134,6 +136,7 @@ private:
     void shlNormalize(int l, Eigen::MatrixXd& shl);
 
     void _nuclear_repulsion();
+    void _nelectron();
 };
 } // namespace GTO
 #endif

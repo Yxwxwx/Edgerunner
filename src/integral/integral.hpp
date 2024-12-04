@@ -154,8 +154,8 @@ private:
 
     std::vector<std::tuple<int, int>> _ij;
     std::vector<std::tuple<int, int, int, int>> _ijkl;
-    double _ij_size;
-    double _ijkl_size;
+    int _ij_size;
+    int _ijkl_size;
 
     void gen_nao();
     void gen_s8();

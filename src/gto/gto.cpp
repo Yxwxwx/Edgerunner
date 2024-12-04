@@ -33,6 +33,18 @@ void Mol::_nuclear_repulsion()
             _nuc_rep += atoms[i].Z * atoms[j].Z / r;
         }
 }
+
+void Mol::_nelectron()
+{
+    _nelec[2] = _charge;
+    for(int i = 0; i < atoms.size(); i++) 
+    {
+        _nelec[2] += atoms[i].Z;
+    }
+    _nelec[0] = (_nelec[2] + _spin) / 2;
+    _nelec[1] = _nelec[2] - _nelec[0];
+}
+
 void Mol::parseXYZ(const std::string& xyz)
 {
     std::istringstream iss(xyz);
@@ -73,6 +85,7 @@ void Mol::parseXYZ(const std::string& xyz)
         atoms.push_back({ atomSymbol, Z, x, y, z });
     }
     _nuclear_repulsion();
+    _nelectron();
 }
 
 void Mol::parseBasis(const std::string& basis)
@@ -370,6 +383,11 @@ cint_info Mol::get_cint_info() const
 double Mol::get_nuc_rep() const
 {
     return _nuc_rep;
+}
+
+const std::array<int, 3>& Mol::get_nelec() const 
+{
+    return _nelec;
 }
 
 } // namespace GTO
