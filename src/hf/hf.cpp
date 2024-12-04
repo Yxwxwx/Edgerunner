@@ -94,6 +94,8 @@ void rhf::kernel()
 {
     double old_energy = 0.0;
     double delta_energy = 0.0;
+    double delta_D = 0.0;
+    Eigen::MatrixXd old_D = Eigen::MatrixXd::Zero(nao, nao);
     compute_init_guess();
 
     for (int i = 1; i <= _max_iter; ++i) {
@@ -101,11 +103,13 @@ void rhf::kernel()
         auto hf_energy = compute_energy_tot();
         compute_density_matrix();
         delta_energy = std::abs(hf_energy - old_energy);
+        delta_D = (_D - old_D).norm() / nao;
         old_energy = hf_energy;
-        std::cout << std::format("Iteration: {:>3} | Energy: {:>12.6f} | Difference: {:>12.6e}\n",
-            i, hf_energy, delta_energy);
+        old_D = _D;
+        std::cout << std::format("Iteration: {:>3} | Energy: {:>12.10f} | dE: {:>12.6e} | dD: {:>12.6e}\n",
+            i, hf_energy, delta_energy, delta_D);
 
-        if (delta_energy < _conv_tol) {
+        if (delta_energy < _conv_tol && delta_D < _conv_tol) {
             std::cout << "Convergence achieved in " << i << " iterations" << std::endl;
             _energy_tot = hf_energy;
             break;
