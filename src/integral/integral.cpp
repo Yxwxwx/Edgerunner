@@ -92,6 +92,7 @@ auto Integral::calc_int1e() -> void
 
 auto Integral::calc_int2e() -> void
 {
+    auto start = std::chrono::steady_clock::now();
 
     _I.resize(nao, nao, nao, nao);
     _I.setZero();
@@ -133,6 +134,10 @@ auto Integral::calc_int2e() -> void
         }
     }
     CINTdel_optimizer(&opt);
+
+    std::cout << "Integral calculation time: "
+              << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count() / 1000.0
+              << " s" << std::endl;
 }
 
 auto Integral::calc_int() -> void

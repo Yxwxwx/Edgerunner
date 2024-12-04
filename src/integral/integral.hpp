@@ -5,9 +5,11 @@
 #include "gto/gto.hpp"
 #define EIGEN_USE_THREADS
 #include <Eigen/Dense>
+#include <chrono>
 #include <omp.h>
 #include <unsupported/Eigen/CXX11/Tensor>
 #include <vector>
+
 extern "C" {
 #include <cint.h>
 int cint1e_ovlp_cart(double* buf, int* shls,
