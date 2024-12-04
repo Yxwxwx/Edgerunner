@@ -139,10 +139,10 @@ public:
     auto calc_int1e() -> void;
     auto calc_int2e() -> void;
 
-    auto get_ijkl() -> const std::vector<std::tuple<int, int, int, int>>;
-    auto get_dim(int i, int j, int k, int l) -> const std::tuple<int, int, int, int>;
-    auto get_offset(int i, int j, int k, int l) -> const std::tuple<int, int, int, int>;
-    auto calc_int2e_shell(std::tuple<int, int, int, int>& ijkl, std::tuple<int, int, int, int>& dim) -> std::vector<double>;
+    auto get_ijkl() -> std::vector<std::tuple<int, int, int, int>>;
+    auto get_dim(int i, int j, int k, int l) -> std::tuple<int, int, int, int>;
+    auto get_offset(int i, int j, int k, int l) -> std::tuple<int, int, int, int>;
+    auto calc_int2e_shell(std::tuple<int, int, int, int> ijkl, std::tuple<int, int, int, int> dim) -> Eigen::Tensor<double, 4>;
 
 private:
     std::vector<int> _atm;

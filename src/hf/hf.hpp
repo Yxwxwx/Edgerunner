@@ -37,9 +37,8 @@ private:
     double compute_energy_elec();
     double compute_energy_tot();
 
-    double degeneracy(const int i, const int j, const int k, const int l)
+    double degeneracy(const int s1, const int s2, const int s3, const int s4)
     {
-        auto s1 = i, s2 = j, s3 = k, s4 = l;
         auto s12_deg = (s1 == s2) ? 1.0 : 2.0;
         auto s34_deg = (s3 == s4) ? 1.0 : 2.0;
         auto s12_34_deg = (s1 == s3) ? (s2 == s4 ? 1.0 : 2.0) : 2.0;

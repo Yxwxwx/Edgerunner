@@ -137,14 +137,14 @@ auto Integral::calc_int2e() -> void
               << " s" << std::endl;
 }
 
-auto Integral::calc_int2e_shell(std::tuple<int, int, int, int>& ijkl, std::tuple<int, int, int, int>& dim) -> std::vector<double>
+auto Integral::calc_int2e_shell(std::tuple<int, int, int, int> ijkl, std::tuple<int, int, int, int> dim) -> Eigen::Tensor<double, 4>
 {
     auto [i, j, k, l] = ijkl;
     auto [di, dj, dk, dl] = dim;
     int shls[] = { i, j, k, l };
 
-    std::vector<double> buf_i(di * dj * dk * dl);
-    cint2e_sph(buf_i.data(), shls, _atm.data(), _natm, _bas.data(), _nbas, _env.data(), NULL);
+    Eigen::Tensor<double, 4> buf_i(di, dj, dk, dl);
+    cint2e_sph(buf_i.data(), shls, _atm.data(), _natm, _bas.data(), _nbas, _env.data(), nullptr);
 
     return buf_i;
 }
@@ -182,11 +182,11 @@ const Eigen::Tensor<double, 4>& Integral::get_int2e()
     return _I;
 }
 
-auto Integral::get_ijkl() -> const std::vector<std::tuple<int, int, int, int>>
+auto Integral::get_ijkl() -> std::vector<std::tuple<int, int, int, int>>
 {
     return _ijkl;
 }
-auto Integral::get_offset(int i, int j, int k, int l) -> const std::tuple<int, int, int, int>
+auto Integral::get_offset(int i, int j, int k, int l) -> std::tuple<int, int, int, int>
 {
 
     int x = CINTtot_cgto_spheric(_bas.data(), i);
@@ -196,7 +196,7 @@ auto Integral::get_offset(int i, int j, int k, int l) -> const std::tuple<int, i
     return { x, y, z, h };
 }
 
-auto Integral::get_dim(int i, int j, int k, int l) -> const std::tuple<int, int, int, int>
+auto Integral::get_dim(int i, int j, int k, int l) -> std::tuple<int, int, int, int>
 {
     int di = CINTcgto_spheric(i, _bas.data());
     int dj = CINTcgto_spheric(j, _bas.data());
