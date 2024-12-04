@@ -10,51 +10,31 @@ rhf::rhf(GTO::Mol& mol, int max_iter, double conv_tol)
     _nuc_rep_energy = mol.get_nuc_rep();
     _S = int_eng.get_overlap();
     _H = int_eng.get_H();
+    _I = int_eng.get_int2e();
 }
 
 void rhf::compute_fock_matrix()
 {
-    const auto eri = int_eng.get_int2e();
-
-    Eigen::MatrixXd J = Eigen::MatrixXd::Zero(nao, nao);
+    Eigen::MatrixXd G = Eigen::MatrixXd::Zero(nao, nao);
 #pragma omp parallel
     {
-        Eigen::MatrixXd local_J = Eigen::MatrixXd::Zero(nao, nao);
+        Eigen::MatrixXd local_G = Eigen::MatrixXd::Zero(nao, nao);
 #pragma omp for collapse(2)
         for (int l = 0; l < nao; ++l) {
             for (int k = 0; k < nao; ++k) {
                 for (int j = 0; j < nao; ++j) {
                     for (int i = 0; i < nao; ++i) {
-                        local_J(i, j) += eri(i, j, k, l) * _D(k, l);
+                        local_G(i, j) += (2 * _I(i, j, k, l) - _I(i, k, j, l)) * _D(k, l);
                     }
                 }
             }
         }
 
 #pragma omp critical
-        J += local_J;
+        G += local_G;
     }
 
-    Eigen::MatrixXd K = Eigen::MatrixXd::Zero(nao, nao);
-#pragma omp parallel
-    {
-        Eigen::MatrixXd local_K = Eigen::MatrixXd::Zero(nao, nao);
-#pragma omp for collapse(2)
-        for (int l = 0; l < nao; ++l) {
-            for (int j = 0; j < nao; ++j) {
-                for (int k = 0; k < nao; ++k) {
-                    for (int i = 0; i < nao; ++i) {
-                        local_K(i, j) += eri(i, k, j, l) * _D(k, l);
-                    }
-                }
-            }
-        }
-
-#pragma omp critical
-        K += local_K;
-    }
-
-    _F = _H + 2 * J - K;
+    _F = _H + G;
     // const auto den = YXTensor::matrix_to_tensor(_D);
     //  auto J_ = YXTensor::einsum<2, double, 4, 2, 2>("ijkl,kl->ij", eri, den);
     //  auto K_ = YXTensor::einsum<2, double, 4, 2, 2>("ikjl,kl->ij", eri, den);
@@ -86,8 +66,9 @@ double rhf::compute_energy_tot()
     return compute_energy_elec() + _nuc_rep_energy;
 }
 
-void rhf::kernel()
+bool rhf::kernel()
 {
+    auto start = std::chrono::steady_clock::now();
     double old_energy = 0.0;
     double delta_energy = 0.0;
     double delta_D = 0.0;
@@ -99,7 +80,8 @@ void rhf::kernel()
         auto hf_energy = compute_energy_tot();
         compute_density_matrix();
         delta_energy = std::abs(hf_energy - old_energy);
-        delta_D = (_D - old_D).norm() / nao;
+        Eigen::MatrixXd squared_diff = (_D - old_D).array().square();
+        delta_D = std::sqrt(squared_diff.sum() / squared_diff.size());
         old_energy = hf_energy;
         old_D = _D;
         std::cout << std::format("Iteration: {:>3} | Energy: {:>12.10f} | dE: {:>12.6e} | dD: {:>12.6e}\n",
@@ -108,9 +90,14 @@ void rhf::kernel()
         if (delta_energy < _conv_tol && delta_D < _conv_tol) {
             std::cout << "Convergence achieved in " << i << " iterations" << std::endl;
             _energy_tot = hf_energy;
-            break;
+            std::cout << "HF calculation finished in " 
+            << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count() / 1000.0 
+            << " s" << std::endl;
+            return true;
         }
     }
+    throw std::runtime_error("SCF did not converge within maximum iterations");
+    return false;
 }
 
 const Eigen::MatrixXd& rhf::get_fock_matrix() const

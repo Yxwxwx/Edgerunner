@@ -92,12 +92,14 @@ auto Integral::calc_int1e() -> void
 
 auto Integral::calc_int2e() -> void
 {
+    auto start = std::chrono::system_clock::now();
 
     _I.resize(nao, nao, nao, nao);
     _I.setZero();
 
     CINTOpt* opt = NULL;
     cint2e_sph_optimizer(&opt, _atm.data(), _natm, _bas.data(), _nbas, _env.data());
+
 
 #pragma omp parallel for shared(opt)
     for (auto t = 0; t < _ijkl_size; t++) {
@@ -133,6 +135,9 @@ auto Integral::calc_int2e() -> void
         }
     }
     CINTdel_optimizer(&opt);
+    std::cout << "Integral calculation finished in " 
+    << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - start).count() / 1000.0 
+    << " s" << std::endl;
 }
 
 auto Integral::calc_int() -> void

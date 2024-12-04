@@ -7,6 +7,7 @@
 #include "integral/integral.hpp"
 #include "linalg/einsum.hpp"
 #include <Eigen/Dense>
+#include <chrono>
 
 namespace HF {
 class rhf {
@@ -24,6 +25,7 @@ private:
     Eigen::MatrixXd _H;
     Eigen::MatrixXd _F;
     Eigen::MatrixXd _D;
+    Eigen::Tensor<double, 4> _I;
 
     void compute_fock_matrix();
     void compute_density_matrix();
@@ -39,7 +41,7 @@ public:
     const Eigen::MatrixXd& get_density_matrix() const;
     const double get_energy_tot() const;
 
-    void kernel();
+    bool kernel();
 };
 
 } // namespace HF
