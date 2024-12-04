@@ -1,3 +1,4 @@
+#pragma once
 #ifndef EINSUM_HPP
 #define EINSUM_HPP
 // Eigen3
@@ -45,16 +46,15 @@ Eigen::Matrix<TensorType, Eigen::Dynamic, Eigen::Dynamic> tensor_to_matrix(const
 template <int num_contractions, typename TensorType, int Dim1, int Dim2,
     int ResultDim>
 Eigen::Tensor<TensorType, ResultDim>
-einsum(const std::string& einsum_str,
-    const Eigen::Tensor<TensorType, Dim1>& input1,
-    const Eigen::Tensor<TensorType, Dim2>& input2);
+einsum(std::string&& einsum_str, const Eigen::Tensor<TensorType, Dim1>&& input1,
+    const Eigen::Tensor<TensorType, Dim2>&& input2);
 
 template <int num_contractions, typename TensorType, int Dim1, int Dim2,
     int ResultDim>
-void einsum(const std::string& einsum_str,
-    const Eigen::Tensor<TensorType, Dim1>& input1,
-    const Eigen::Tensor<TensorType, Dim2>& input2,
-    const Eigen::Tensor<TensorType, ResultDim>& result_input);
+void einsum(const std::string&& einsum_str,
+    const Eigen::Tensor<TensorType, Dim1>&& input1,
+    const Eigen::Tensor<TensorType, Dim2>&& input2,
+    Eigen::Tensor<TensorType, ResultDim>&& result_input);
 
 // namespace Tensor
 
@@ -335,8 +335,8 @@ parse_einsum_string(const std::string& einsum_str, std::string& result_indices,
 template <int num_contractions, typename TensorType, int Dim1, int Dim2,
     int ResultDim>
 Eigen::Tensor<TensorType, ResultDim>
-einsum(std::string&& einsum_str, Eigen::Tensor<TensorType, Dim1>&& input1,
-    Eigen::Tensor<TensorType, Dim2>&& input2)
+einsum(std::string&& einsum_str, const Eigen::Tensor<TensorType, Dim1>&& input1,
+    const Eigen::Tensor<TensorType, Dim2>&& input2)
 {
 
     std::vector<size_t> left_idx;

@@ -3,6 +3,7 @@
 #define INTEGRAL_HPP
 
 #include "gto/gto.hpp"
+#define EIGEN_USE_THREADS
 #include <Eigen/Dense>
 #include <omp.h>
 #include <unsupported/Eigen/CXX11/Tensor>
