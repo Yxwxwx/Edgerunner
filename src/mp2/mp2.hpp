@@ -11,11 +11,12 @@
 namespace MP2 {
 class MP2 {
 public:
-    MP2(GTO::Mol& mol);
+    MP2(GTO::Mol& mol, int frozen = 0);
     void kernel();
 
 private:
     HF::rhf hf_eng;
+    int nfrozen;
     int nao;
     int nocc;
     int nvir;

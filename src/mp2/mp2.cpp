@@ -1,8 +1,8 @@
 #include "mp2.hpp"
 
 namespace MP2 {
-MP2::MP2(GTO::Mol& mol)
-    : hf_eng(mol)
+MP2::MP2(GTO::Mol& mol, int frozen)
+    : hf_eng(mol), nfrozen(frozen)
 {
     auto converge = hf_eng.kernel(false);
     if (!converge) {
@@ -78,9 +78,9 @@ void MP2::kernel()
 
 #pragma omp parallel for schedule(dynamic) reduction(+ : energy_mp2)
     for (int b = nocc; b < nao; b++) {
-        for (int j = 0; j < nocc; j++) {
+        for (int j = nfrozen; j < nocc; j++) {
             for (int a = nocc; a < nao; a++) {
-                for (int i = 0; i < nocc; i++) {
+                for (int i = nfrozen; i < nocc; i++) {
                     double numerator = _I_mo(i, a, j, b) * (2.0 * _I_mo(i, a, j, b) - _I_mo(i, b, j, a));
                     double denominator = _orb_energy(i) + _orb_energy(j) - _orb_energy(a) - _orb_energy(b);
                     energy_mp2 += numerator / denominator;
