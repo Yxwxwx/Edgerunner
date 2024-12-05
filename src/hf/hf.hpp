@@ -21,6 +21,7 @@ private:
     int nao;
     int nocc;
     bool _direct;
+    bool _DIIS;
     std::vector<std::tuple<int, int, int, int>> _ijkl;
     int _ijkl_size;
 
@@ -36,6 +37,13 @@ private:
     void compute_init_guess();
     double compute_energy_elec();
     double compute_energy_tot();
+    Eigen::MatrixXd compute_diis_error();
+    Eigen::MatrixXd apply_diis();
+
+    //DIIS
+    std::vector<Eigen::MatrixXd> diis_fock_list;
+    std::vector<Eigen::MatrixXd> diis_error_list;
+    int diis_max_space = 6;
 
     double degeneracy(const int s1, const int s2, const int s3, const int s4)
     {
@@ -46,7 +54,7 @@ private:
     }
 
 public:
-    rhf(GTO::Mol& mol, int max_iter = 100, double conv_tol = 1e-7, bool direct = true);
+    rhf(GTO::Mol& mol, int max_iter = 100, double conv_tol = 1e-7, bool direct = true, bool DIIS = true);
     ~rhf() = default;
 
     const Eigen::MatrixXd& get_fock_matrix() const;

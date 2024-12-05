@@ -1,8 +1,8 @@
 #include "hf.hpp"
 
 namespace HF {
-rhf::rhf(GTO::Mol& mol, int max_iter, double conv_tol, bool direct)
-    : int_eng(mol), _max_iter(max_iter), _conv_tol(conv_tol), _direct(direct)
+rhf::rhf(GTO::Mol& mol, int max_iter, double conv_tol, bool direct, bool DIIS)
+    : int_eng(mol), _max_iter(max_iter), _conv_tol(conv_tol), _direct(direct), _DIIS(DIIS)
 {
     if (!_direct) {
         int_eng.calc_int();
@@ -116,6 +116,39 @@ double rhf::compute_energy_tot()
     return compute_energy_elec() + _nuc_rep_energy;
 }
 
+Eigen::MatrixXd rhf::compute_diis_error()
+{
+    Eigen::MatrixXd DFS = _F * _D * _S;
+    return (DFS - DFS.transpose());
+}
+
+Eigen::MatrixXd rhf::apply_diis() 
+{
+    int n = diis_error_list.size();
+
+    Eigen::MatrixXd B = Eigen::MatrixXd::Zero(n + 1, n + 1);
+    for (int i = 0; i < n; ++i) {
+        for (int j = 0; j < n; ++j) {
+            B(i, j) = (diis_error_list[i].cwiseProduct(diis_error_list[j])).sum();
+        }
+        B(i, n) = -1.0;
+        B(n, i) = -1.0;
+    }
+    B(n, n) = 0.0;
+
+    Eigen::VectorXd rhs = Eigen::VectorXd::Zero(n + 1);
+    rhs(n) = -1.0;
+
+    Eigen::VectorXd coeff = B.colPivHouseholderQr().solve(rhs);
+
+    Eigen::MatrixXd F_new = Eigen::MatrixXd::Zero(nao, nao);
+    for (int i = 0; i < n; ++i) {
+        F_new += coeff(i) * diis_fock_list[i];
+    }
+
+    return F_new;
+}
+
 auto rhf::kernel() -> bool
 {
     auto start = std::chrono::steady_clock::now();
@@ -135,6 +168,22 @@ auto rhf::kernel() -> bool
         }
 
         auto hf_energy = compute_energy_tot();
+
+        if (_DIIS) {
+            Eigen::MatrixXd diis_error = compute_diis_error();
+            diis_fock_list.push_back(_F);
+            diis_error_list.push_back(diis_error);
+
+            if (diis_fock_list.size() > diis_max_space) {
+                diis_fock_list.erase(diis_fock_list.begin());
+                diis_error_list.erase(diis_error_list.begin());
+            }
+
+            if (diis_fock_list.size() > 3) {
+                _F = apply_diis();
+            }
+        }
+
         compute_density_matrix();
         delta_energy = std::abs(hf_energy - old_energy);
         Eigen::MatrixXd squared_diff = (_D - old_D).array().square();
