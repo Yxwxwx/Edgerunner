@@ -201,7 +201,8 @@ auto rhf::kernel(bool direct, bool DIIS, int diis_max_space, int diis_start) -> 
             _energy_tot = hf_energy;
 
             std::cout << "Self consist files takes:" << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count() / 1000.0
-                      << " s" << std::endl;
+                      << " s\n"
+                      << std::endl;
             return true;
         }
     }

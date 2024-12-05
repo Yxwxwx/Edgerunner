@@ -75,6 +75,8 @@ void MP2::kernel()
 {
     auto start = std::chrono::high_resolution_clock::now();
     ao_to_mo();
+
+#pragma omp parallel for schedule(dynamic) reduction(+ : energy_mp2)
     for (int b = nocc; b < nao; b++) {
         for (int j = 0; j < nocc; j++) {
             for (int a = nocc; a < nao; a++) {
@@ -88,7 +90,7 @@ void MP2::kernel()
     }
     total_energy = hf_eng.get_energy_tot() + energy_mp2;
     std::cout << std::format("MP2 energy: {:>12.10f} | Total energy: {:>12.10f}", energy_mp2, total_energy) << std::endl;
-    std::cout << std::format("MP2 taken: {:>8.3f} s", std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start).count()) << std::endl;
+    std::cout << std::format("MP2 taken: {:>8.3f} s \n", std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start).count()) << std::endl;
 }
 
 } // namespace MP2
