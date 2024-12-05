@@ -26,6 +26,7 @@ private:
     int _ijkl_size;
 
     Eigen::MatrixXd _S;
+    Eigen::MatrixXd _A;
     Eigen::MatrixXd _H;
     Eigen::MatrixXd _F;
     Eigen::MatrixXd _D;
@@ -40,18 +41,13 @@ private:
     Eigen::MatrixXd compute_diis_error();
     Eigen::MatrixXd apply_diis();
 
-    //DIIS
+    double degeneracy(const int s1, const int s2, const int s3, const int s4);
+    Eigen::MatrixXd matrix_sqrt_inverse(const Eigen::MatrixXd& mat);
+
+    // DIIS
     std::vector<Eigen::MatrixXd> diis_fock_list;
     std::vector<Eigen::MatrixXd> diis_error_list;
     int diis_max_space = 6;
-
-    double degeneracy(const int s1, const int s2, const int s3, const int s4)
-    {
-        auto s12_deg = (s1 == s2) ? 1.0 : 2.0;
-        auto s34_deg = (s3 == s4) ? 1.0 : 2.0;
-        auto s12_34_deg = (s1 == s3) ? (s2 == s4 ? 1.0 : 2.0) : 2.0;
-        return s12_deg * s34_deg * s12_34_deg;
-    }
 
 public:
     rhf(GTO::Mol& mol, int max_iter = 100, double conv_tol = 1e-7, bool direct = true, bool DIIS = true);

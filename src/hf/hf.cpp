@@ -18,6 +18,7 @@ rhf::rhf(GTO::Mol& mol, int max_iter, double conv_tol, bool direct, bool DIIS)
     nocc = mol.get_nelec()[2] / 2;
     _nuc_rep_energy = mol.get_nuc_rep();
     _S = int_eng.get_overlap();
+    // _A = matrix_sqrt_inverse(_S);
     _H = int_eng.get_H();
 }
 
@@ -122,7 +123,7 @@ Eigen::MatrixXd rhf::compute_diis_error()
     return (DFS - DFS.transpose());
 }
 
-Eigen::MatrixXd rhf::apply_diis() 
+Eigen::MatrixXd rhf::apply_diis()
 {
     int n = diis_error_list.size();
 
@@ -219,4 +220,36 @@ const double rhf::get_energy_tot() const
 {
     return _energy_tot;
 }
+
+// help funcitions
+double rhf::degeneracy(const int s1, const int s2, const int s3, const int s4)
+{
+    auto s12_deg = (s1 == s2) ? 1.0 : 2.0;
+    auto s34_deg = (s3 == s4) ? 1.0 : 2.0;
+    auto s12_34_deg = (s1 == s3) ? (s2 == s4 ? 1.0 : 2.0) : 2.0;
+    return s12_deg * s34_deg * s12_34_deg;
+}
+
+Eigen::MatrixXd rhf::matrix_sqrt_inverse(const Eigen::MatrixXd& mat)
+{
+    // Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> solver(mat);
+
+    // Eigen::VectorXd eigenvalues = solver.eigenvalues();
+    // Eigen::MatrixXd eigenvectors = solver.eigenvectors();
+
+    // Eigen::VectorXd sqrt_inv_eigenvalues = eigenvalues.array().sqrt().inverse();
+
+    // return eigenvectors * sqrt_inv_eigenvalues.asDiagonal() * eigenvectors.transpose();
+
+    Eigen::JacobiSVD<Eigen::MatrixXd> svd(mat, Eigen::ComputeThinU | Eigen::ComputeThinV);
+
+    Eigen::VectorXd singular_values = svd.singularValues();
+    Eigen::MatrixXd U = svd.matrixU();
+    Eigen::MatrixXd V = svd.matrixV();
+
+    Eigen::VectorXd sqrt_inv_singular_values = singular_values.array().sqrt().inverse();
+
+    return U * sqrt_inv_singular_values.asDiagonal() * V.transpose();
+}
+
 } // namespace HF
