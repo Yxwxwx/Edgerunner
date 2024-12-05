@@ -94,10 +94,10 @@ void rhf::compute_fock_matrix_direct()
 void rhf::compute_density_matrix()
 {
     Eigen::GeneralizedSelfAdjointEigenSolver<Eigen::MatrixXd> solver(_F, _S);
-    Eigen::MatrixXd C = solver.eigenvectors();
+    _C = solver.eigenvectors();
     _orb_energy = solver.eigenvalues();
-    _C = C.leftCols(nocc);
-    _D = _C * _C.transpose();
+    auto C_occ = _C.leftCols(nocc);
+    _D = C_occ * C_occ.transpose();
 }
 
 void rhf::compute_init_guess()
