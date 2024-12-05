@@ -31,6 +31,8 @@ private:
     Eigen::MatrixXd _F;
     Eigen::MatrixXd _D;
     Eigen::Tensor<double, 4> _I;
+    Eigen::MatrixXd _C;
+    Eigen::VectorXd _orb_energy;
 
     void compute_fock_matrix();
     void compute_fock_matrix_direct();
@@ -56,7 +58,8 @@ public:
     const Eigen::MatrixXd& get_fock_matrix() const;
     const Eigen::MatrixXd& get_density_matrix() const;
     const double get_energy_tot() const;
-
+    const Eigen::MatrixXd& get_coeff() const;
+    const Eigen::VectorXd& get_orb_energy() const;
     bool kernel();
 };
 

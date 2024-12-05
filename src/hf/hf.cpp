@@ -95,8 +95,9 @@ void rhf::compute_density_matrix()
 {
     Eigen::GeneralizedSelfAdjointEigenSolver<Eigen::MatrixXd> solver(_F, _S);
     Eigen::MatrixXd C = solver.eigenvectors();
-    Eigen::MatrixXd C_occ = C.leftCols(nocc);
-    _D = C_occ * C_occ.transpose();
+    _orb_energy = solver.eigenvalues();
+    _C = C.leftCols(nocc);
+    _D = _C * _C.transpose();
 }
 
 void rhf::compute_init_guess()
@@ -219,6 +220,15 @@ const Eigen::MatrixXd& rhf::get_density_matrix() const
 const double rhf::get_energy_tot() const
 {
     return _energy_tot;
+}
+const Eigen::MatrixXd& rhf::get_coeff() const
+{
+    return _C;
+}
+
+const Eigen::VectorXd& rhf::get_orb_energy() const
+{
+    return _orb_energy;
 }
 
 // help funcitions
