@@ -23,9 +23,7 @@ private:
     double total_energy { 0.0 };
     Eigen::MatrixXd _C;
     Eigen::VectorXd _orb_energy;
-    Eigen::MatrixXd _H_ao;
     Eigen::MatrixXd _H_mo;
-    Eigen::Tensor<double, 4> _I_ao;
     Eigen::Tensor<double, 4> _I_mo;
 
     void ao_to_mo();

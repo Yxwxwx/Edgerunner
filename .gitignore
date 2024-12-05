@@ -2,4 +2,4 @@
 .cache/
 build/
 .DS_Store
-note*
+*.py

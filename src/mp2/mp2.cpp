@@ -8,8 +8,8 @@ MP2::MP2(GTO::Mol& mol)
     if (!converge) {
         throw std::runtime_error("MP2 cannot be run because HF has not converged.");
     }
-    _H_ao = hf_eng.get_int1e();
-    _I_ao = hf_eng.get_int2e();
+    _H_mo = hf_eng.get_int1e();
+    _I_mo = hf_eng.get_int2e();
     _C = hf_eng.get_coeff();
     _orb_energy = hf_eng.get_orb_energy();
     nao = hf_eng.get_nao();
@@ -18,73 +18,77 @@ MP2::MP2(GTO::Mol& mol)
 }
 void MP2::ao_to_mo()
 {
-    auto C_T = _C.transpose();
+    _H_mo = _C.transpose() * _H_mo * _C;
 
-    for (int j = 0; j < nao; j++) {
-        for (int i = 0; i < nao; i++) {
-            _H_mo(i, j) = C_T(i, j) * _H_ao(i, j) * _C(i, j);
-        }
+    Eigen::Tensor<double, 4> tmp(nao, nao, nao, nao);
+
+    tmp.setZero();
+#pragma omp parallel
+#pragma omp for nowait schedule(dynamic)
+    for (int s = 0; s < nao; ++s) // STEP 1  (iq | rs)<-(pq | rs)
+    {
+        for (int r = 0; r < nao; ++r)
+            for (int q = 0; q < nao; ++q)
+                for (int i = 0; i < nao; ++i)
+                    for (int p = 0; p < nao; ++p)
+                        tmp(i, q, r, s) += _I_mo(p, q, r, s) * _C(p, i);
     }
 
-    for (int S = 0; S < nao; S++) {
-        for (int s = 0; s < nao; s++) {
-            for (int r = 0; r < nao; r++) {
-                for (int q = 0; q < nao; q++) {
-                    for (int p = 0; p < nao; p++) {
-                        _I_mo(p, q, r, S) = _I_ao(p, q, r, s) * _C(s, S);
-                    }
-                }
-            }
-        }
+    _I_mo.setZero();
+#pragma omp parallel
+#pragma omp for nowait schedule(dynamic)
+    for (int s = 0; s < nao; ++s) // STEP 2  (ij | rs)<-(iq | rs)
+    {
+        for (int r = 0; r < nao; ++r)
+            for (int j = 0; j < nao; ++j)
+                for (int q = 0; q < nao; ++q)
+                    for (int i = 0; i < nao; ++i)
+                        _I_mo(i, j, r, s) += tmp(i, q, r, s) * _C(q, j);
     }
-    for (int R = 0; R < nao; R++) {
-        for (int S = 0; S < nao; S++) {
-            for (int r = 0; r < nao; r++) {
-                for (int q = 0; q < nao; q++) {
-                    for (int p = 0; p < nao; p++) {
-                        _I_mo(p, q, R, S) += _I_mo(p, q, r, S) * _C(r, R);
-                    }
-                }
-            }
-        }
+    tmp.setZero();
+#pragma omp parallel
+#pragma omp for nowait schedule(dynamic)
+    for (int s = 0; s < nao; ++s) // STEP 3  (ij | ks)<-(ij | rs)
+    {
+        for (int k = 0; k < nao; ++k)
+            for (int r = 0; r < nao; ++r)
+                for (int j = 0; j < nao; ++j)
+                    for (int i = 0; i < nao; ++i)
+                        tmp(i, j, k, s) += _I_mo(i, j, r, s) * _C(r, k);
     }
-    for (int Q = 0; Q < nao; Q++) {
-        for (int S = 0; S < nao; S++) {
-            for (int R = 0; R < nao; R++)
-                for (int q = 0; q < nao; q++) {
-                    for (int p = 0; p < nao; p++) {
-                        _I_mo(p, Q, R, S) += _I_mo(p, q, R, S) * _C(q, Q);
-                    }
-                }
-        }
+    _I_mo.setZero();
+
+#pragma omp parallel
+#pragma omp for nowait schedule(dynamic)
+    for (int l = 0; l < nao; ++l) // STEP 4  (ij | kl)<-(ij | ks)
+    {
+        for (int s = 0; s < nao; ++s)
+            for (int k = 0; k < nao; ++k)
+                for (int j = 0; j < nao; ++j)
+                    for (int i = 0; i < nao; ++i)
+                        _I_mo(i, j, k, l) += tmp(i, j, k, s) * _C(s, l);
     }
-    for (int P = 0; P < nao; P++) {
-        for (int S = 0; S < nao; S++) {
-            for (int R = 0; R < nao; R++) {
-                for (int Q = 0; Q < nao; Q++) {
-                    for (int p = 0; P < nao; p++) {
-                        _I_mo(P, Q, R, S) += _I_mo(p, Q, R, S) * _C(p, P);
-                    }
-                }
-            }
-        }
-    }
+    tmp.resize(0, 0, 0, 0);
 }
 
 void MP2::kernel()
 {
+    auto start = std::chrono::high_resolution_clock::now();
     ao_to_mo();
     for (int b = nocc; b < nao; b++) {
-        for (int a = nocc; a < nao; a++) {
-            for (int j = 0; j < nocc; j++) {
+        for (int j = 0; j < nocc; j++) {
+            for (int a = nocc; a < nao; a++) {
                 for (int i = 0; i < nocc; i++) {
-                    energy_mp2 -= (_I_mo(a, i, b, j) * (2.0 * _I_mo(a, i, b, j) - _I_mo(a, j, b, i))) / (_orb_energy(a) + _orb_energy(b) - _orb_energy(i) - _orb_energy(j));
+                    double numerator = _I_mo(i, a, j, b) * (2.0 * _I_mo(i, a, j, b) - _I_mo(i, b, j, a));
+                    double denominator = _orb_energy(i) + _orb_energy(j) - _orb_energy(a) - _orb_energy(b);
+                    energy_mp2 += numerator / denominator;
                 }
             }
         }
     }
     total_energy = hf_eng.get_energy_tot() + energy_mp2;
     std::cout << std::format("MP2 energy: {:>12.10f} | Total energy: {:>12.10f}", energy_mp2, total_energy) << std::endl;
+    std::cout << std::format("MP2 taken: {:>8.3f} s", std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start).count()) << std::endl;
 }
 
 } // namespace MP2

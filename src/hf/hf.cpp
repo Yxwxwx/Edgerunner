@@ -1,4 +1,5 @@
 #include "hf.hpp"
+#include <format>
 
 namespace HF {
 rhf::rhf(GTO::Mol& mol, int max_iter, double conv_tol)
@@ -7,7 +8,6 @@ rhf::rhf(GTO::Mol& mol, int max_iter, double conv_tol)
     nao = int_eng.get_nao();
     nocc = mol.get_nelec()[2] / 2;
     _nuc_rep_energy = mol.get_nuc_rep();
-
 }
 
 void rhf::compute_fock_matrix()
