@@ -4,28 +4,31 @@
 
 #define EIGEN_USE_THREADS
 #include "gto/gto.hpp"
-#include "integral/integral.hpp"
 #include "hf/hf.hpp"
+#include "integral/integral.hpp"
 #include <Eigen/Dense>
 
 namespace MP2 {
 class MP2 {
 public:
     MP2(GTO::Mol& mol);
-    
-
+    void kernel();
 
 private:
     HF::rhf hf_eng;
+    int nao;
+    int nocc;
+    int nvir;
+    double energy_mp2 { 0.0 };
+    double total_energy { 0.0 };
     Eigen::MatrixXd _C;
     Eigen::VectorXd _orb_energy;
+    Eigen::MatrixXd _H_ao;
+    Eigen::MatrixXd _H_mo;
     Eigen::Tensor<double, 4> _I_ao;
     Eigen::Tensor<double, 4> _I_mo;
 
     void ao_to_mo();
-
-    void calc_mp2();
-
 };
 
 } // namespace MP2

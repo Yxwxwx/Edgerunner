@@ -54,9 +54,13 @@ public:
 
     const Eigen::MatrixXd& get_fock_matrix() const;
     const Eigen::MatrixXd& get_density_matrix() const;
+    const Eigen::MatrixXd& get_int1e() const;
+    const Eigen::Tensor<double, 4>& get_int2e() const;
     const double get_energy_tot() const;
     const Eigen::MatrixXd& get_coeff() const;
     const Eigen::VectorXd& get_orb_energy() const;
+    const int get_nao() const;
+    const int get_nocc() const;
     bool kernel(bool direct = true, bool DIIS = true, int diis_max_space = 6, int diis_start = 2);
 };
 

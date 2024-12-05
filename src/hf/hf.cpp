@@ -218,6 +218,14 @@ const Eigen::MatrixXd& rhf::get_density_matrix() const
 {
     return _D;
 }
+const Eigen::MatrixXd& rhf::get_int1e() const
+{
+    return _H;
+}
+const Eigen::Tensor<double, 4>& rhf::get_int2e() const
+{
+    return _I;
+}
 const double rhf::get_energy_tot() const
 {
     return _energy_tot;
@@ -230,6 +238,14 @@ const Eigen::MatrixXd& rhf::get_coeff() const
 const Eigen::VectorXd& rhf::get_orb_energy() const
 {
     return _orb_energy;
+}
+const int rhf::get_nao() const
+{
+    return nao;
+}
+const int rhf::get_nocc() const
+{
+    return nocc;
 }
 
 // help funcitions
