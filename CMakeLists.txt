@@ -54,11 +54,12 @@ file(GLOB_RECURSE src_gto "src/gto/*.[ch]pp")
 file(GLOB_RECURSE src_int "src/integral/*.[ch]pp")
 file(GLOB_RECURSE src_hf "src/hf/*.[ch]pp")
 file(GLOB_RECURSE src_util "src/linalg/*.[ch]pp")
+file(GLOB_RECURSE src_mp2 "src/mp2/*.[ch]pp")
 
 add_definitions(-DSHARE_DIR="${CMAKE_SOURCE_DIR}/share")
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
-add_executable(Edgerunners ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp ${src_gto} ${src_int} ${src_hf} ${src_util})
+add_executable(Edgerunners ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp ${src_gto} ${src_int} ${src_hf} ${src_util} ${src_mp2})
 
 target_link_libraries(Edgerunners 
                       ${CINTLIB}

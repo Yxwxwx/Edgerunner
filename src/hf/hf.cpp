@@ -1,25 +1,13 @@
 #include "hf.hpp"
 
 namespace HF {
-rhf::rhf(GTO::Mol& mol, int max_iter, double conv_tol, bool direct, bool DIIS)
-    : int_eng(mol), _max_iter(max_iter), _conv_tol(conv_tol), _direct(direct), _DIIS(DIIS)
+rhf::rhf(GTO::Mol& mol, int max_iter, double conv_tol)
+    : int_eng(mol), _max_iter(max_iter), _conv_tol(conv_tol)
 {
-    if (!_direct) {
-        int_eng.calc_int();
-        _I = int_eng.get_int2e();
-    }
-    else {
-        int_eng.calc_int1e();
-        _ijkl = int_eng.get_ijkl();
-        _ijkl_size = _ijkl.size();
-    }
-
     nao = int_eng.get_nao();
     nocc = mol.get_nelec()[2] / 2;
     _nuc_rep_energy = mol.get_nuc_rep();
-    _S = int_eng.get_overlap();
-    // _A = matrix_sqrt_inverse(_S);
-    _H = int_eng.get_H();
+
 }
 
 void rhf::compute_fock_matrix()
@@ -151,8 +139,21 @@ Eigen::MatrixXd rhf::apply_diis()
     return F_new;
 }
 
-auto rhf::kernel() -> bool
+auto rhf::kernel(bool direct, bool DIIS, int diis_max_space, int diis_start) -> bool
 {
+    if (!direct) {
+        int_eng.calc_int();
+        _I = int_eng.get_int2e();
+    }
+    else {
+        int_eng.calc_int1e();
+        _ijkl = int_eng.get_ijkl();
+        _ijkl_size = _ijkl.size();
+    }
+    _S = int_eng.get_overlap();
+    // _A = matrix_sqrt_inverse(_S);
+    _H = int_eng.get_H();
+
     auto start = std::chrono::steady_clock::now();
     double old_energy = 0.0;
     double delta_energy = 0.0;
@@ -161,7 +162,7 @@ auto rhf::kernel() -> bool
     compute_init_guess();
 
     for (int i = 1; i <= _max_iter; ++i) {
-        if (!_direct) {
+        if (!direct) {
 
             compute_fock_matrix();
         }
@@ -171,17 +172,17 @@ auto rhf::kernel() -> bool
 
         auto hf_energy = compute_energy_tot();
 
-        if (_DIIS) {
-            Eigen::MatrixXd diis_error = compute_diis_error();
-            diis_fock_list.push_back(_F);
-            diis_error_list.push_back(diis_error);
+        if (DIIS) {
 
-            if (diis_fock_list.size() > diis_max_space) {
-                diis_fock_list.erase(diis_fock_list.begin());
-                diis_error_list.erase(diis_error_list.begin());
-            }
+            if (i > diis_start) {
+                Eigen::MatrixXd diis_error = compute_diis_error();
+                diis_error_list.push_back(diis_error);
+                diis_fock_list.push_back(_F);
 
-            if (diis_fock_list.size() > 3) {
+                if (diis_fock_list.size() > diis_max_space) {
+                    diis_fock_list.erase(diis_fock_list.begin());
+                    diis_error_list.erase(diis_error_list.begin());
+                }
                 _F = apply_diis();
             }
         }

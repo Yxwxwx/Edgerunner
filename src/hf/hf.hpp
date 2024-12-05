@@ -20,8 +20,6 @@ private:
     double _conv_tol;
     int nao;
     int nocc;
-    bool _direct;
-    bool _DIIS;
     std::vector<std::tuple<int, int, int, int>> _ijkl;
     int _ijkl_size;
 
@@ -49,10 +47,9 @@ private:
     // DIIS
     std::vector<Eigen::MatrixXd> diis_fock_list;
     std::vector<Eigen::MatrixXd> diis_error_list;
-    int diis_max_space = 6;
 
 public:
-    rhf(GTO::Mol& mol, int max_iter = 100, double conv_tol = 1e-7, bool direct = true, bool DIIS = true);
+    rhf(GTO::Mol& mol, int max_iter = 100, double conv_tol = 1e-7);
     ~rhf() = default;
 
     const Eigen::MatrixXd& get_fock_matrix() const;
@@ -60,7 +57,7 @@ public:
     const double get_energy_tot() const;
     const Eigen::MatrixXd& get_coeff() const;
     const Eigen::VectorXd& get_orb_energy() const;
-    bool kernel();
+    bool kernel(bool direct = true, bool DIIS = true, int diis_max_space = 6, int diis_start = 2);
 };
 
 } // namespace HF
