@@ -25,10 +25,10 @@ void Integral::gen_nao()
 }
 void Integral::gen_s8()
 {
-    for (int i = 0; i < _nbas; i++) {
-        for (int j = i; j < _nbas; j++) {
-            for (int k = 0; k < _nbas; k++) {
-                for (int l = k; l < _nbas; l++) {
+    for (int l = 0; l < _nbas; l++) {
+        for (int k = l; k < _nbas; k++) {
+            for (int j = 0; j < _nbas; j++) {
+                for (int i = j; i < _nbas; i++) {
                     if (std::tuple(i, j) <= std::tuple(k, l)) {
                         _ijkl.emplace_back(i, j, k, l);
                     }
