@@ -8,6 +8,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --param=destructive-interference-size=64")
 
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+  if(UNIX)
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -march=native")
+  endif()
+endif()
+
 # --------------------> eigen3 (required) <--------------------
 include(FetchContent)
 
