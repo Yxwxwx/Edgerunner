@@ -12,31 +12,41 @@ rhf::rhf(GTO::Mol& mol, int max_iter, double conv_tol)
 
 void rhf::compute_fock_matrix()
 {
-
     Eigen::MatrixXd G = Eigen::MatrixXd::Zero(nao, nao);
+
 #pragma omp parallel
     {
         Eigen::MatrixXd local_G = Eigen::MatrixXd::Zero(nao, nao);
-#pragma omp for collapse(2)
-        for (int l = 0; l < nao; ++l) {
-            for (int k = 0; k < nao; ++k) {
-                for (int j = 0; j < nao; ++j) {
-                    for (int i = 0; i < nao; ++i) {
-                        local_G(i, j) += (_I(i, j, k, l) * 2 - _I(i, k, j, l)) * _D(k, l);
+
+#pragma omp for schedule(dynamic)
+        for (int t = 0; t < _ijkl_size; t++) {
+            auto [i, j, k, l] = _ijkl[t];
+            auto [di, dj, dk, dl] = int_eng.get_dim(i, j, k, l);
+            auto [x, y, z, w] = int_eng.get_offset(i, j, k, l);
+            double s1234_deg = degeneracy(i, j, k, l);
+
+            //  auto buf = int_eng.calc_int2e_shell(_ijkl[t], dim);
+            for (int fl = 0; fl < dl; fl++) {
+                for (int fk = 0; fk < dk; fk++) {
+                    for (int fj = 0; fj < dj; fj++) {
+                        for (int fi = 0; fi < di; fi++) {
+                            local_G(x + fi, y + fj) += _D(z + fk, w + fl) * _I(x + fi, y + fj, z + fk, w + fl) * s1234_deg;
+                            local_G(z + fk, w + fl) += _D(x + fi, y + fj) * _I(x + fi, y + fj, z + fk, w + fl) * s1234_deg;
+                            local_G(x + fi, z + fk) -= 0.25 * _D(y + fj, w + fl) * _I(x + fi, y + fj, z + fk, w + fl) * s1234_deg;
+                            local_G(y + fj, w + fl) -= 0.25 * _D(x + fi, z + fk) * _I(x + fi, y + fj, z + fk, w + fl) * s1234_deg;
+                            local_G(x + fi, w + fl) -= 0.25 * _D(y + fj, z + fk) * _I(x + fi, y + fj, z + fk, w + fl) * s1234_deg;
+                            local_G(y + fj, z + fk) -= 0.25 * _D(x + fi, w + fl) * _I(x + fi, y + fj, z + fk, w + fl) * s1234_deg;
+                        }
                     }
                 }
             }
         }
 
 #pragma omp critical
-        G += local_G;
+        G += local_G; // 合并线程局部贡献
     }
-    _F = _H + G;
 
-    //     const auto den = YXTensor::matrix_to_tensor(_D);
-    //     auto result = _I.shuffle(Eigen::array<int, 4> { 0, 2, 1, 3 }) * -1.0 + _I * 2.0;
-    //     auto G_ = YXTensor::einsum<2, double, 4, 2, 2>("ijkl,kl->ij", result, den);
-    //     _F = _H + YXTensor::tensor_to_matrix(G_);
+    _F = _H + 0.5 * (G + G.transpose()); // 构造最终 Fock 矩阵
 }
 
 void rhf::compute_fock_matrix_direct()
@@ -57,10 +67,10 @@ void rhf::compute_fock_matrix_direct()
 
             auto buf = int_eng.calc_int2e_shell(_ijkl[t], dim);
 
-            for (int fi = 0; fi < di; fi++) {
-                for (int fj = 0; fj < dj; fj++) {
-                    for (int fk = 0; fk < dk; fk++) {
-                        for (int fl = 0; fl < dl; fl++) {
+            for (int fl = 0; fl < dl; fl++) {
+                for (int fk = 0; fk < dk; fk++) {
+                    for (int fj = 0; fj < dj; fj++) {
+                        for (int fi = 0; fi < di; fi++) {
                             local_G(x + fi, y + fj) += _D(z + fk, w + fl) * buf(fi, fj, fk, fl) * s1234_deg;
                             local_G(z + fk, w + fl) += _D(x + fi, y + fj) * buf(fi, fj, fk, fl) * s1234_deg;
                             local_G(x + fi, z + fk) -= 0.25 * _D(y + fj, w + fl) * buf(fi, fj, fk, fl) * s1234_deg;
@@ -144,6 +154,8 @@ auto rhf::kernel(bool direct, bool DIIS, int diis_max_space, int diis_start) -> 
     if (!direct) {
         int_eng.calc_int();
         _I = int_eng.get_int2e();
+        _ijkl = int_eng.get_ijkl();
+        _ijkl_size = _ijkl.size();
     }
     else {
         int_eng.calc_int1e();
