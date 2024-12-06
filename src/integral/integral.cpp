@@ -122,13 +122,13 @@ auto Integral::calc_int2e() -> void
 #pragma omp critical
         {
             _I.slice(Eigen::array<int, 4> { x, y, z, h }, Eigen::array<int, 4> { di, dj, dk, dl }) = buf_i;
-            _I.slice(Eigen::array<int, 4> { y, x, z, h }, Eigen::array<int, 4> { dj, di, dk, dl }) = buf_i.shuffle(Eigen::array<int, 4> { 1, 0, 2, 3 });
-            _I.slice(Eigen::array<int, 4> { x, y, h, z }, Eigen::array<int, 4> { di, dj, dl, dk }) = buf_i.shuffle(Eigen::array<int, 4> { 0, 1, 3, 2 });
-            _I.slice(Eigen::array<int, 4> { y, x, h, z }, Eigen::array<int, 4> { dj, di, dl, dk }) = buf_i.shuffle(Eigen::array<int, 4> { 1, 0, 3, 2 });
-            _I.slice(Eigen::array<int, 4> { z, h, x, y }, Eigen::array<int, 4> { dk, dl, di, dj }) = buf_i.shuffle(Eigen::array<int, 4> { 2, 3, 0, 1 });
-            _I.slice(Eigen::array<int, 4> { h, z, x, y }, Eigen::array<int, 4> { dl, dk, di, dj }) = buf_i.shuffle(Eigen::array<int, 4> { 3, 2, 0, 1 });
-            _I.slice(Eigen::array<int, 4> { z, h, y, x }, Eigen::array<int, 4> { dk, dl, dj, di }) = buf_i.shuffle(Eigen::array<int, 4> { 2, 3, 1, 0 });
-            _I.slice(Eigen::array<int, 4> { h, z, y, x }, Eigen::array<int, 4> { dl, dk, dj, di }) = buf_i.shuffle(Eigen::array<int, 4> { 3, 2, 1, 0 });
+            //     _I.slice(Eigen::array<int, 4> { y, x, z, h }, Eigen::array<int, 4> { dj, di, dk, dl }) = buf_i.shuffle(Eigen::array<int, 4> { 1, 0, 2, 3 });
+            //     _I.slice(Eigen::array<int, 4> { x, y, h, z }, Eigen::array<int, 4> { di, dj, dl, dk }) = buf_i.shuffle(Eigen::array<int, 4> { 0, 1, 3, 2 });
+            //     _I.slice(Eigen::array<int, 4> { y, x, h, z }, Eigen::array<int, 4> { dj, di, dl, dk }) = buf_i.shuffle(Eigen::array<int, 4> { 1, 0, 3, 2 });
+            //     _I.slice(Eigen::array<int, 4> { z, h, x, y }, Eigen::array<int, 4> { dk, dl, di, dj }) = buf_i.shuffle(Eigen::array<int, 4> { 2, 3, 0, 1 });
+            //     _I.slice(Eigen::array<int, 4> { h, z, x, y }, Eigen::array<int, 4> { dl, dk, di, dj }) = buf_i.shuffle(Eigen::array<int, 4> { 3, 2, 0, 1 });
+            //     _I.slice(Eigen::array<int, 4> { z, h, y, x }, Eigen::array<int, 4> { dk, dl, dj, di }) = buf_i.shuffle(Eigen::array<int, 4> { 2, 3, 1, 0 });
+            //     _I.slice(Eigen::array<int, 4> { h, z, y, x }, Eigen::array<int, 4> { dl, dk, dj, di }) = buf_i.shuffle(Eigen::array<int, 4> { 3, 2, 1, 0 });
         }
     }
 

@@ -5,8 +5,11 @@
 auto main() -> int
 {
     GTO::Mol H2O("O 0 0 0; H 0 -0.757 0.587; H 0 0.757 0.587", "cc-pvqz");
-    MP2::MP2 mp2(H2O);
-    mp2.kernel();
+    // MP2::MP2 mp2(H2O);
+    // mp2.kernel();
+
+    HF::rhf hf(H2O);
+    hf.kernel(false);
 
     return 0;
 }

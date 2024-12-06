@@ -20,6 +20,23 @@ void MP2::ao_to_mo()
 {
     _H_mo = _C.transpose() * _H_mo * _C;
 
+    for (int s = 0; s < nao; s++) {
+        for (int r = 0; r < nao; r++) {
+            for (int q = 0; q < nao; q++) {
+                for (int p = 0; p < nao; p++) {
+                    auto val = _I_mo(p, q, r, s);
+                    _I_mo(p, q, s, r) = val;
+                    _I_mo(q, p, r, s) = val;
+                    _I_mo(q, p, s, r) = val;
+                    _I_mo(r, s, p, q) = val;
+                    _I_mo(s, r, p, q) = val;
+                    _I_mo(r, s, q, p) = val;
+                    _I_mo(s, r, q, p) = val;
+                }
+            }
+        }
+    }
+
     Eigen::Tensor<double, 4> tmp(nao, nao, nao, nao);
 
     tmp.setZero();
