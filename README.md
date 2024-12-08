@@ -56,7 +56,10 @@ cd build
 cmake -DUSE_INTEL=ON -DUSE_MKL=ON -DCMAKE_BUILD_TYPE=Release -G "Ninja" ..
 cmake --build .
 ```
-
+- run
+```bash
+./Edgerunner
+```
 ## Usage
 
 As a framework for teaching and exercises, you can easily run different systems by modifying the `main` function:
