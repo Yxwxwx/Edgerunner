@@ -30,12 +30,30 @@ This is a programming example for quantum chemistry education, written in C++ an
 - Requires **CMake** version >= 3.28, **Ninja** is recommended as the generator.
 - A C++ compiler supporting **C++20** and above (Clang/GCC) is required.
 - Supported only on **MacOS** and **Linux** systems.
+- if you use GCC/Clang:
 
 ```bash
 mkdir build
 cd build
 cmake -DCMAKE_BUILD_TYPE=Release -G "Ninja" ..
-(if you use MKL as BLAS and LAPACK, add -D__USE_MKL__=ON)
+cmake --build .
+```
+
+- if you use GCC/Clang with MKL:
+
+```bash
+mkdir build
+cd build
+cmake  -DUSE_MKL=ON -DCMAKE_BUILD_TYPE=Release -G "Ninja" ..
+cmake --build .
+```
+
+- if you use Intel_oneAPI:
+
+```bash
+mkdir build
+cd build
+cmake -DUSE_INTEL=ON -DUSE_MKL=ON -DCMAKE_BUILD_TYPE=Release -G "Ninja" ..
 cmake --build .
 ```
 

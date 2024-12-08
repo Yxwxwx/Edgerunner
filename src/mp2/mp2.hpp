@@ -2,7 +2,7 @@
 #ifndef __MP2_HPP__
 #define __MP2_HPP__
 
-#ifdef __USE_MKL__
+#ifdef USE_MK
 #define EIGEN_USE_MKL_ALL
 #endif
 

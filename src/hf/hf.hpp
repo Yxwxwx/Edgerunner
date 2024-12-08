@@ -2,7 +2,7 @@
 #ifndef __HF_HPP__
 #define __HF_HPP__
 
-#ifdef __USE_MKL__
+#ifdef USE_MK
 #define EIGEN_USE_MKL_ALL
 #endif
 

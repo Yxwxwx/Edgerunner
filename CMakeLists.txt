@@ -1,12 +1,29 @@
 cmake_minimum_required(VERSION 3.28)
 
+# --------------------> Intel oneAPI (opentional) <--------------------
+option(USE_INTEL "Enable Intel oneAPI support" OFF)
+
+if(USE_INTEL)
+  message(STATUS "Intel oneAPI support enabled.")
+  set(CMAKE_C_COMPILER "icx")
+  set(CMAKE_CXX_COMPILER "icpx")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -ipo -xHost")
+else()
+  message(STATUS "Intel oneAPI support not enabled.")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -march=native")
+endif()
+# --------------------> compiler flags <--------------------
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64 --param=destructive-interference-size=64")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -m64")
+
 project(Edgerunner LANGUAGES C CXX)
 include(ExternalProject)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --param=destructive-interference-size=64")
+find_package(OpenMP REQUIRED)
+find_package(Threads REQUIRED)
 
 # --------------------> eigen3 (required) <--------------------
 include(FetchContent)
@@ -28,21 +45,6 @@ FetchContent_Declare(
   GIT_TAG master
   GIT_SHALLOW TRUE
 )
-# --------------------> MKL (required) <--------------------
-
-option(__USE_MKL__ "Enable MKL support" OFF)
-
-if(__USE_MKL__)
-    message(STATUS "MKL support enabled.")
-    set(MKLLIB "-L${MKLROOT}/lib -Wl,--no-as-needed -lmkl_intel_lp64 -lmkl_gnu_thread -lmkl_core -lgomp -lpthread -lm -ldl")
-    include_directories(${MKLROOT}/include)
-else()
-    message(STATUS "MKL support disabled.")
-    set(MKLLIB "")
-endif()
-
-
-# 添加 CMake 配置选项
 set(CMAKE_ARGS
   -DWITH_RANGE_COULOMB=ON
   -DENABLE_EXAMPLE=0
@@ -52,16 +54,26 @@ set(CMAKE_ARGS
   -DMIN_EXPCUTOFF=20
   -DKEEP_GOING=1
 )
-
 FetchContent_MakeAvailable(cint)
-# 设置 CMake 编译选项
 include_directories(${cint_BINARY_DIR}/include)
 set(CINTLIB "${cint_BINARY_DIR}/${CMAKE_SHARED_LIBRARY_PREFIX}cint${CMAKE_SHARED_LIBRARY_SUFFIX}")
+# --------------------> MKL (required) <--------------------
 
+option(USE_MKL "Enable MKL support" OFF)
 
-
-find_package(OpenMP REQUIRED)
-find_package(Threads REQUIRED)
+if(USE_MKL)
+    message(STATUS "MKL support enabled.")
+    if(USE_INTEL) 
+      set(MKLLIB "-qmkl=parallel")
+    else()
+      set(MKLLIB "-L${MKLROOT}/lib -Wl,--no-as-needed -lmkl_intel_lp64 -lmkl_gnu_thread -lmkl_core -lgomp -lpthread -lm -ldl")
+      include_directories(${MKLROOT}/include)
+    endif()
+else()
+    message(STATUS "MKL support disabled.")
+    set(MKLLIB "")
+endif()
+# --------------------> END  <--------------------
 
 file(GLOB_RECURSE src_gto "src/gto/*.[ch]pp")
 file(GLOB_RECURSE src_int "src/integral/*.[ch]pp")
