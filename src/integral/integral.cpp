@@ -3,28 +3,44 @@
 namespace Integral {
 Integral::Integral(GTO::Mol& mol)
 {
+    // Get CINT information from the molecular object
     auto tmp = mol.get_cint_info();
+    // Initialize atomic information
     _atm = tmp.atm;
+    // Initialize basis set information
     _bas = tmp.bas;
+    // Initialize environment information
     _env = tmp.env;
+    // Initialize the number of atoms
     _natm = tmp.natm;
+    // Initialize the number of basis functions
     _nbas = tmp.nbas;
 
+    // Generate the number of atomic orbitals
     gen_nao();
+    // Generate s8 integral index
     gen_s8();
+    // Generate Hermitian integral index
     gen_hermit();
+    // Calculate integrals
     // calc_int();
+    // Optimize CINT integral calculation
     cint2e_sph_optimizer(&opt, _atm.data(), _natm, _bas.data(), _nbas, _env.data());
 }
 
 void Integral::gen_nao()
 {
+    // Calculate the total number of atomic orbitals
     for (auto i = 0; i < _nbas; i++) {
+        // Number of orbitals for each basis function
         nao += (_bas[i * BAS_SLOTS + ANG_OF] * 2 + 1) * _bas[i * BAS_SLOTS + NCTR_OF];
     }
 }
+
 void Integral::gen_s8()
 {
+    // Generate s8 integral index
+    // since (ij|kl) = (ij|lk) = (ji|kl) = (ji|lk) = (kl|ij) = (kl|ji) = (lk|ij) = (lk|ji)
     for (int l = 0; l < _nbas; l++) {
         for (int k = l; k < _nbas; k++) {
             for (int j = 0; j < _nbas; j++) {
@@ -38,10 +54,13 @@ void Integral::gen_s8()
     }
     _ijkl_size = _ijkl.size();
 }
+
 void Integral::gen_hermit()
 {
-    for (auto i = 0; i < _nbas; i++) {
-        for (auto j = i; j < _nbas; j++) {
+    // Generate Hermitian integral index
+    // since (i|j) = (j|i)
+    for (auto j = 0; j < _nbas; j++) {
+        for (auto i = j; i < _nbas; i++) {
             _ij.emplace_back(i, j);
         }
     }

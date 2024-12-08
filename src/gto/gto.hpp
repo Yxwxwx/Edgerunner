@@ -1,7 +1,10 @@
 #pragma once
-
 #ifndef GTO_HPP
 #define GTO_HPP
+
+#ifdef __USE_MKL__
+#define EIGEN_USE_MKL_ALL
+#endif
 
 #include <Eigen/Dense>
 #include <algorithm>

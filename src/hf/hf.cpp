@@ -2,7 +2,7 @@
 #include <format>
 
 namespace HF {
-rhf::rhf(GTO::Mol& mol, int max_iter, double conv_tol)
+RHF::RHF(GTO::Mol& mol, int max_iter, double conv_tol)
     : int_eng(mol), _max_iter(max_iter), _conv_tol(conv_tol)
 {
     nao = int_eng.get_nao();
@@ -10,7 +10,7 @@ rhf::rhf(GTO::Mol& mol, int max_iter, double conv_tol)
     _nuc_rep_energy = mol.get_nuc_rep();
 }
 
-void rhf::compute_fock_matrix()
+void RHF::compute_fock_matrix()
 {
     Eigen::MatrixXd G = Eigen::MatrixXd::Zero(nao, nao);
 
@@ -27,15 +27,20 @@ void rhf::compute_fock_matrix()
 
             //  auto buf = int_eng.calc_int2e_shell(_ijkl[t], dim);
             for (int fl = 0; fl < dl; fl++) {
+                auto w_idx = w + fl;
                 for (int fk = 0; fk < dk; fk++) {
+                    auto z_idx = z + fk;
                     for (int fj = 0; fj < dj; fj++) {
+                        auto y_idx = y + fj;
                         for (int fi = 0; fi < di; fi++) {
-                            local_G(x + fi, y + fj) += _D(z + fk, w + fl) * _I(x + fi, y + fj, z + fk, w + fl) * s1234_deg;
-                            local_G(z + fk, w + fl) += _D(x + fi, y + fj) * _I(x + fi, y + fj, z + fk, w + fl) * s1234_deg;
-                            local_G(x + fi, z + fk) -= 0.25 * _D(y + fj, w + fl) * _I(x + fi, y + fj, z + fk, w + fl) * s1234_deg;
-                            local_G(y + fj, w + fl) -= 0.25 * _D(x + fi, z + fk) * _I(x + fi, y + fj, z + fk, w + fl) * s1234_deg;
-                            local_G(x + fi, w + fl) -= 0.25 * _D(y + fj, z + fk) * _I(x + fi, y + fj, z + fk, w + fl) * s1234_deg;
-                            local_G(y + fj, z + fk) -= 0.25 * _D(x + fi, w + fl) * _I(x + fi, y + fj, z + fk, w + fl) * s1234_deg;
+                            auto x_idx = x + fi;
+
+                            local_G(x_idx, y_idx) += _D(z_idx, w_idx) * _I(x_idx, y_idx, z_idx, w_idx) * s1234_deg;
+                            local_G(z_idx, w_idx) += _D(x_idx, y_idx) * _I(x_idx, y_idx, z_idx, w_idx) * s1234_deg;
+                            local_G(x_idx, z_idx) -= 0.25 * _D(y_idx, w_idx) * _I(x_idx, y_idx, z_idx, w_idx) * s1234_deg;
+                            local_G(y_idx, w_idx) -= 0.25 * _D(x_idx, z_idx) * _I(x_idx, y_idx, z_idx, w_idx) * s1234_deg;
+                            local_G(x_idx, w_idx) -= 0.25 * _D(y_idx, z_idx) * _I(x_idx, y_idx, z_idx, w_idx) * s1234_deg;
+                            local_G(y_idx, z_idx) -= 0.25 * _D(x_idx, w_idx) * _I(x_idx, y_idx, z_idx, w_idx) * s1234_deg;
                         }
                     }
                 }
@@ -43,13 +48,13 @@ void rhf::compute_fock_matrix()
         }
 
 #pragma omp critical
-        G += local_G; // 合并线程局部贡献
+        G += local_G;
     }
 
-    _F = _H + 0.5 * (G + G.transpose()); // 构造最终 Fock 矩阵
+    _F = _H + 0.5 * (G + G.transpose());
 }
 
-void rhf::compute_fock_matrix_direct()
+void RHF::compute_fock_matrix_direct()
 {
     Eigen::MatrixXd G = Eigen::MatrixXd::Zero(nao, nao);
 
@@ -68,15 +73,20 @@ void rhf::compute_fock_matrix_direct()
             auto buf = int_eng.calc_int2e_shell(_ijkl[t], dim);
 
             for (int fl = 0; fl < dl; fl++) {
+                auto w_idx = w + fl;
                 for (int fk = 0; fk < dk; fk++) {
+                    auto z_idx = z + fk;
                     for (int fj = 0; fj < dj; fj++) {
+                        auto y_idx = y + fj;
                         for (int fi = 0; fi < di; fi++) {
-                            local_G(x + fi, y + fj) += _D(z + fk, w + fl) * buf(fi, fj, fk, fl) * s1234_deg;
-                            local_G(z + fk, w + fl) += _D(x + fi, y + fj) * buf(fi, fj, fk, fl) * s1234_deg;
-                            local_G(x + fi, z + fk) -= 0.25 * _D(y + fj, w + fl) * buf(fi, fj, fk, fl) * s1234_deg;
-                            local_G(y + fj, w + fl) -= 0.25 * _D(x + fi, z + fk) * buf(fi, fj, fk, fl) * s1234_deg;
-                            local_G(x + fi, w + fl) -= 0.25 * _D(y + fj, z + fk) * buf(fi, fj, fk, fl) * s1234_deg;
-                            local_G(y + fj, z + fk) -= 0.25 * _D(x + fi, w + fl) * buf(fi, fj, fk, fl) * s1234_deg;
+                            auto x_idx = x + fi;
+
+                            local_G(x_idx, y_idx) += _D(z_idx, w_idx) * buf(fi, fj, fk, fl) * s1234_deg;
+                            local_G(z_idx, w_idx) += _D(x_idx, y_idx) * buf(fi, fj, fk, fl) * s1234_deg;
+                            local_G(x_idx, z_idx) -= 0.25 * _D(y_idx, w_idx) * buf(fi, fj, fk, fl) * s1234_deg;
+                            local_G(y_idx, w_idx) -= 0.25 * _D(x_idx, z_idx) * buf(fi, fj, fk, fl) * s1234_deg;
+                            local_G(x_idx, w_idx) -= 0.25 * _D(y_idx, z_idx) * buf(fi, fj, fk, fl) * s1234_deg;
+                            local_G(y_idx, z_idx) -= 0.25 * _D(x_idx, w_idx) * buf(fi, fj, fk, fl) * s1234_deg;
                         }
                     }
                 }
@@ -84,12 +94,12 @@ void rhf::compute_fock_matrix_direct()
         }
 
 #pragma omp critical
-        G += local_G; // 合并线程局部贡献
+        G += local_G;
     }
 
-    _F = _H + 0.5 * (G + G.transpose()); // 构造最终 Fock 矩阵
+    _F = _H + 0.5 * (G + G.transpose());
 }
-void rhf::compute_density_matrix()
+void RHF::compute_density_matrix()
 {
     Eigen::GeneralizedSelfAdjointEigenSolver<Eigen::MatrixXd> solver(_F, _S);
     _C = solver.eigenvectors();
@@ -98,31 +108,31 @@ void rhf::compute_density_matrix()
     _D = C_occ * C_occ.transpose();
 }
 
-void rhf::compute_init_guess()
+void RHF::compute_init_guess()
 {
     _F = _H;
     compute_density_matrix();
 }
 
-double rhf::compute_energy_elec()
+double RHF::compute_energy_elec()
 {
     auto elec_e { 0.0 };
     elec_e = _D.cwiseProduct(_H + _F).sum();
     return elec_e;
 }
 
-double rhf::compute_energy_tot()
+double RHF::compute_energy_tot()
 {
     return compute_energy_elec() + _nuc_rep_energy;
 }
 
-Eigen::MatrixXd rhf::compute_diis_error()
+Eigen::MatrixXd RHF::compute_diis_error()
 {
     Eigen::MatrixXd DFS = _F * _D * _S;
     return (DFS - DFS.transpose());
 }
 
-Eigen::MatrixXd rhf::apply_diis()
+Eigen::MatrixXd RHF::apply_diis()
 {
     int n = diis_error_list.size();
 
@@ -149,7 +159,7 @@ Eigen::MatrixXd rhf::apply_diis()
     return F_new;
 }
 
-auto rhf::kernel(bool direct, bool DIIS, int diis_max_space, int diis_start) -> bool
+auto RHF::kernel(bool direct, bool DIIS, int diis_max_space, int diis_start) -> bool
 {
     if (!direct) {
         int_eng.calc_int();
@@ -222,47 +232,47 @@ auto rhf::kernel(bool direct, bool DIIS, int diis_max_space, int diis_start) -> 
     throw std::runtime_error("Convergence not achieved");
 }
 
-const Eigen::MatrixXd& rhf::get_fock_matrix() const
+const Eigen::MatrixXd& RHF::get_fock_matrix() const
 {
     return _F;
 }
 
-const Eigen::MatrixXd& rhf::get_density_matrix() const
+const Eigen::MatrixXd& RHF::get_density_matrix() const
 {
     return _D;
 }
-const Eigen::MatrixXd& rhf::get_int1e() const
+const Eigen::MatrixXd& RHF::get_int1e() const
 {
     return _H;
 }
-const Eigen::Tensor<double, 4>& rhf::get_int2e() const
+const Eigen::Tensor<double, 4>& RHF::get_int2e() const
 {
     return _I;
 }
-const double rhf::get_energy_tot() const
+const double RHF::get_energy_tot() const
 {
     return _energy_tot;
 }
-const Eigen::MatrixXd& rhf::get_coeff() const
+const Eigen::MatrixXd& RHF::get_coeff() const
 {
     return _C;
 }
 
-const Eigen::VectorXd& rhf::get_orb_energy() const
+const Eigen::VectorXd& RHF::get_orb_energy() const
 {
     return _orb_energy;
 }
-const int rhf::get_nao() const
+const int RHF::get_nao() const
 {
     return nao;
 }
-const int rhf::get_nocc() const
+const int RHF::get_nocc() const
 {
     return nocc;
 }
 
 // help funcitions
-double rhf::degeneracy(const int s1, const int s2, const int s3, const int s4)
+double RHF::degeneracy(const int s1, const int s2, const int s3, const int s4)
 {
     auto s12_deg = (s1 == s2) ? 1.0 : 2.0;
     auto s34_deg = (s3 == s4) ? 1.0 : 2.0;
@@ -270,7 +280,7 @@ double rhf::degeneracy(const int s1, const int s2, const int s3, const int s4)
     return s12_deg * s34_deg * s12_34_deg;
 }
 
-Eigen::MatrixXd rhf::matrix_sqrt_inverse(const Eigen::MatrixXd& mat)
+Eigen::MatrixXd RHF::matrix_sqrt_inverse(const Eigen::MatrixXd& mat)
 {
     // Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> solver(mat);
 

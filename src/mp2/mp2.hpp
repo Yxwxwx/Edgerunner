@@ -2,7 +2,10 @@
 #ifndef __MP2_HPP__
 #define __MP2_HPP__
 
-#define EIGEN_USE_THREADS
+#ifdef __USE_MKL__
+#define EIGEN_USE_MKL_ALL
+#endif
+
 #include "gto/gto.hpp"
 #include "hf/hf.hpp"
 #include "integral/integral.hpp"
@@ -15,7 +18,7 @@ public:
     void kernel();
 
 private:
-    HF::rhf hf_eng;
+    HF::RHF hf_eng;
     int nfrozen;
     int nao;
     int nocc;

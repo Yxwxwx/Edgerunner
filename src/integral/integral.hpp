@@ -2,8 +2,11 @@
 #ifndef INTEGRAL_HPP
 #define INTEGRAL_HPP
 
+#ifdef __USE_MKL__
+#define EIGEN_USE_MKL_ALL
+#endif
+
 #include "gto/gto.hpp"
-#define EIGEN_USE_THREADS
 #include <Eigen/Dense>
 #include <chrono>
 #include <omp.h>
@@ -128,45 +131,45 @@ public:
     Integral(GTO::Mol& mol);
     ~Integral() { CINTdel_optimizer(&opt); }
 
-    const Eigen::MatrixXd& get_overlap();
-    const Eigen::MatrixXd& get_kinetic();
-    const Eigen::MatrixXd& get_nuc();
-    const Eigen::MatrixXd& get_H();
-    const Eigen::Tensor<double, 4>& get_int2e();
+    const Eigen::MatrixXd& get_overlap(); // An interface for overlap matrix
+    const Eigen::MatrixXd& get_kinetic(); // An interface for kinetic energy matrix
+    const Eigen::MatrixXd& get_nuc(); // An interface for nuclear attraction matrix
+    const Eigen::MatrixXd& get_H(); // An interface for H = T + V
+    const Eigen::Tensor<double, 4>& get_int2e(); // An interface for 2-electron integral
 
-    int get_nao() const;
-    auto calc_int() -> void;
-    auto calc_int1e() -> void;
-    auto calc_int2e() -> void;
+    int get_nao() const; // An interface for number of atomic orbitals
+    auto calc_int() -> void; // A interface for calc_int1e and calc_int2e
+    auto calc_int1e() -> void; // A interface for calc_int1e_sph
+    auto calc_int2e() -> void; // A interface for calc_int2e_sph
 
-    auto get_ijkl() -> std::vector<std::tuple<int, int, int, int>>;
-    auto get_dim(int i, int j, int k, int l) -> std::tuple<int, int, int, int>;
-    auto get_offset(int i, int j, int k, int l) -> std::tuple<int, int, int, int>;
-    auto calc_int2e_shell(std::tuple<int, int, int, int> ijkl, std::tuple<int, int, int, int> dim) -> Eigen::Tensor<double, 4>;
+    auto get_ijkl() -> std::vector<std::tuple<int, int, int, int>>; // A interface for S8 symmetry
+    auto get_dim(int i, int j, int k, int l) -> std::tuple<int, int, int, int>; // A interface for the int2e dimension of (ij|kl)
+    auto get_offset(int i, int j, int k, int l) -> std::tuple<int, int, int, int>; // A interface for the int2e offset of (ij|kl)
+    auto calc_int2e_shell(std::tuple<int, int, int, int> ijkl, std::tuple<int, int, int, int> dim) -> Eigen::Tensor<double, 4>; // A interface for calc (ij|kl)
 
 private:
-    std::vector<int> _atm;
-    std::vector<int> _bas;
-    std::vector<double> _env;
-    std::vector<int> _shls;
-    int _natm;
-    int _nbas;
-    int nao { 0 };
-    CINTOpt* opt = NULL;
+    std::vector<int> _atm; // used in Libcint
+    std::vector<int> _bas; // used in Libcint
+    std::vector<double> _env; // used in Libcint
+    std::vector<int> _shls; // used in Libcint
+    int _natm; // used in Libcint
+    int _nbas; // used in Libcint
+    int nao { 0 }; // number of atomic orbitals
+    CINTOpt* opt = NULL; // used in Libcint
 
-    Eigen::MatrixXd _S;
-    Eigen::MatrixXd _T;
-    Eigen::MatrixXd _V;
-    Eigen::MatrixXd _H;
-    Eigen::Tensor<double, 4> _I;
+    Eigen::MatrixXd _S; // overlap matrix
+    Eigen::MatrixXd _T; // kinetic energy matrix
+    Eigen::MatrixXd _V; // nuclear attraction matrix
+    Eigen::MatrixXd _H; // H = T + V
+    Eigen::Tensor<double, 4> _I; // 2-electron integral
 
-    std::vector<std::tuple<int, int>> _ij;
-    std::vector<std::tuple<int, int, int, int>> _ijkl;
-    int _ij_size;
-    int _ijkl_size;
+    std::vector<std::tuple<int, int>> _ij; // A wrapper for int2e symmetry
+    std::vector<std::tuple<int, int, int, int>> _ijkl; // A wrapper for S8 symmetry
+    int _ij_size; // the number of ij
+    int _ijkl_size; // the number of ijkl
 
-    void gen_nao();
-    void gen_s8();
-    void gen_hermit();
+    void gen_nao(); // generate number of atomic orbitals
+    void gen_s8(); // generate S8 symmetry
+    void gen_hermit(); // generate hermit symmetry
 };
 } // namaspace Integral
