@@ -28,7 +28,7 @@ This is a programming example for quantum chemistry education, written in C++ an
 ## Installation
 
 - Requires **CMake** version >= 3.28, **Ninja** is recommended as the generator.
-- A C/C++ compiler supporting **C++20** and above (Clang/GCC) is required.
+- A C/C++ compiler supporting **C++20** and above (Clang/GCC/Intel_oneapi) is required.
 - Supported only on **MacOS** and **Linux** systems.
 
 ```bash
